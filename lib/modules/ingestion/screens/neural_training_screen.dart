@@ -64,7 +64,44 @@ class _NeuralTrainingScreenState extends State<NeuralTrainingScreen> {
     }
   }
 
+  Future<bool> _showConfirmDialog({
+    required String title,
+    required String message,
+    required String confirmLabel,
+    Color? confirmColor,
+  }) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18)),
+        content: Text(message, style: const TextStyle(fontSize: 14)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: confirmColor ?? AppTheme.danger,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            child: Text(confirmLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    ) ?? false;
+  }
+
   Future<void> _markAsSpam(String msgId) async {
+    final confirm = await _showConfirmDialog(
+      title: 'Declare as Spam?',
+      message: 'This will block the sender and automatically ignore all future messages matching this pattern.',
+      confirmLabel: 'Mark as Spam',
+    );
+    if (!confirm) return;
+
     final config = context.read<AppConfig>();
     final auth = context.read<AuthService>();
     final url = Uri.parse('${config.backendUrl}/api/v1/ingestion/training/$msgId/mark-as-spam');
@@ -78,6 +115,13 @@ class _NeuralTrainingScreenState extends State<NeuralTrainingScreen> {
   }
 
   Future<void> _bulkIgnore(List<String> ids) async {
+    final confirm = await _showConfirmDialog(
+      title: 'Ignore All Messages?',
+      message: 'You are about to dismiss ${ids.length} messages. This action cannot be undone.',
+      confirmLabel: 'Ignore All',
+    );
+    if (!confirm) return;
+
     final config = context.read<AppConfig>();
     final auth = context.read<AuthService>();
     final url = Uri.parse('${config.backendUrl}/api/v1/ingestion/training/bulk-dismiss');
@@ -311,6 +355,13 @@ class _NeuralTrainingScreenState extends State<NeuralTrainingScreen> {
               const Spacer(),
               TextButton(
                 onPressed: () async {
+                   final confirm = await _showConfirmDialog(
+                     title: 'Dismiss Message?',
+                     message: 'This pattern will be ignored and removed from the training queue.',
+                     confirmLabel: 'Dismiss',
+                   );
+                   if (!confirm) return;
+                   
                    await context.read<DashboardService>().dismissTraining(item.id);
                    _loadData();
                 },
@@ -378,6 +429,13 @@ class _NeuralTrainingScreenState extends State<NeuralTrainingScreen> {
                 trailing: IconButton(
                   icon: const Icon(Icons.delete_outline, size: 18),
                   onPressed: () async {
+                    final confirm = await _showConfirmDialog(
+                      title: 'Remove Spam Filter?',
+                      message: 'This will allow messages from this sender/subject to reach your training queue again.',
+                      confirmLabel: 'Remove',
+                    );
+                    if (!confirm) return;
+
                     final config = context.read<AppConfig>();
                     final auth = context.read<AuthService>();
                     await http.delete(Uri.parse('${config.backendUrl}/api/v1/ingestion/training/spam/${filter['id']}'), headers: {'Authorization': 'Bearer ${auth.accessToken}'});

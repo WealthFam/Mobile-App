@@ -16,7 +16,9 @@ import 'package:mobile_app/core/services/socket_service.dart';
 import 'package:mobile_app/core/config/app_config.dart';
 import 'package:mobile_app/modules/config/screens/sync_settings_screen.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:mobile_app/core/widgets/transaction_settings_sheet.dart';
 import 'package:decimal/decimal.dart';
+import 'package:mobile_app/modules/home/screens/add_transaction_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final VoidCallback? onMenuPressed;
@@ -84,9 +86,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppTheme.warning.withOpacity(0.2),
+                              color: AppTheme.warning.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(4),
-                              border: Border.all(color: AppTheme.warning.withOpacity(0.5)),
+                              border: Border.all(color: AppTheme.warning.withValues(alpha: 0.5)),
                             ),
                             child: const Text(
                               'PRIVACY',
@@ -135,9 +137,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: AppTheme.danger.withOpacity(0.1),
+                        color: AppTheme.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppTheme.danger.withOpacity(0.3)),
+                        border: Border.all(color: AppTheme.danger.withValues(alpha: 0.3)),
                       ),
                       child: Text(dashboard.error!, style: const TextStyle(color: AppTheme.danger)),
                     ),
@@ -185,6 +187,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ],
             ),
+          ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AddTransactionScreen()),
+          ).then((val) {
+            if (val == true) dashboard.refresh();
+          });
+        },
+        backgroundColor: AppTheme.primary,
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -218,7 +232,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: 4,
                     width: 60,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                     child: FractionallySizedBox(
@@ -235,7 +249,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 4),
                   Text(
                     'Prorated Budget',
-                    style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 8),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 8),
                   ),
                 ],
               ),
@@ -280,7 +294,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           borderRadius: BorderRadius.circular(28),
           boxShadow: [
             BoxShadow(
-              color: colors.last.withOpacity(0.4),
+              color: colors.last.withValues(alpha: 0.4),
               blurRadius: 20,
               offset: const Offset(0, 10),
             )
@@ -292,7 +306,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Positioned(
               right: -10,
               bottom: -10,
-              child: Icon(icon, color: Colors.white.withOpacity(0.12), size: 80),
+              child: Icon(icon, color: Colors.white.withValues(alpha: 0.12), size: 80),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -301,7 +315,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: Colors.white, size: 18),
@@ -309,7 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const Spacer(),
                 Text(
                   title, 
-                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 12, fontWeight: FontWeight.w500)
+                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12, fontWeight: FontWeight.w500)
                 ),
                 const SizedBox(height: 4),
                 FittedBox(
@@ -351,7 +365,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF0F172A).withOpacity(0.3),
+                color: const Color(0xFF0F172A).withValues(alpha: 0.3),
                 blurRadius: 10, offset: const Offset(0, 4),
               )
             ],
@@ -387,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   padding: const EdgeInsets.all(12),
                   margin: const EdgeInsets.only(right: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.1),
+                    color: Colors.white.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: const Icon(Icons.show_chart, color: Colors.greenAccent, size: 28),
@@ -423,7 +437,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Text(
                               "(${((summary.profitLoss.toDouble() / summary.totalInvested.toDouble()) * 100).toStringAsFixed(1)}%)",
                               style: TextStyle(
-                                color: summary.profitLoss >= Decimal.zero ? Colors.greenAccent.withOpacity(0.8) : Colors.redAccent.withOpacity(0.8),
+                                color: summary.profitLoss >= Decimal.zero ? Colors.greenAccent.withValues(alpha: 0.8) : Colors.redAccent.withValues(alpha: 0.8),
                                 fontSize: 10,
                               ),
                             ),
@@ -485,10 +499,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 20,
             offset: const Offset(0, 10),
           )
@@ -514,7 +528,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: healthColor.withOpacity(0.1),
+                  color: healthColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -531,8 +545,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(12),
                 child: LinearProgressIndicator(
                   value: (budget.percentage.toDouble() / 100.0).clamp(0.0, 1.0),
-                  backgroundColor: theme.dividerColor.withOpacity(0.1),
-                  color: color.withOpacity(0.3),
+                  backgroundColor: theme.dividerColor.withValues(alpha: 0.1),
+                  color: color.withValues(alpha: 0.3),
                   minHeight: 12,
                 ),
               ),
@@ -542,7 +556,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: Container(
                     width: 2,
                     height: 12,
-                    color: theme.colorScheme.onSurface.withOpacity(0.5),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                   ),
                 ),
             ],
@@ -586,27 +600,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
         onTap: () {
           Navigator.push(context, MaterialPageRoute(builder: (_) => const AnalyticsScreen()));
         },
+        onLongPress: () {
+          TransactionSettingsSheet.show(context, txn);
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         leading: Consumer<CategoriesService>(
           builder: (context, catService, _) {
             final localTheme = Theme.of(context);
             // Find category case-insensitive or exact
-            final matched = catService.categories
-                .cast<TransactionCategory?>()
-                .firstWhere(
-                  (c) => c?.name.toLowerCase() == txn.category.toLowerCase(),
-                  orElse: () => null,
-                );
+            // Find category case-insensitive or exact
+            final catName = txn.category.contains(' › ') ? txn.category.split(' › ').last : txn.category;
+            TransactionCategory? matched;
+
+            for (var parent in catService.categories) {
+              if (parent.name.toLowerCase() == catName.toLowerCase()) {
+                matched = parent;
+                break;
+              }
+              for (var sub in parent.subcategories) {
+                if (sub.name.toLowerCase() == catName.toLowerCase()) {
+                  matched = sub;
+                  break;
+                }
+              }
+              if (matched != null) break;
+            }
             
             if (matched?.icon != null) {
               return CircleAvatar(
-                backgroundColor: localTheme.primaryColor.withOpacity(0.1),
+                backgroundColor: localTheme.primaryColor.withValues(alpha: 0.1),
                 child: Text(matched!.icon!, style: const TextStyle(fontSize: 20)),
               );
             }
             
             return CircleAvatar(
-              backgroundColor: localTheme.primaryColor.withOpacity(0.1),
+              backgroundColor: localTheme.primaryColor.withValues(alpha: 0.1),
               child: Text(
                 (txn.accountOwnerName != null && txn.accountOwnerName!.isNotEmpty) 
                     ? txn.accountOwnerName![0].toUpperCase()
@@ -636,7 +664,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: AppTheme.primary.withOpacity(0.1),
+                  color: AppTheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Row(
@@ -748,15 +776,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.2)),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(width: 16),
@@ -769,7 +797,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_forward_ios, size: 12, color: color.withOpacity(0.5)),
+            Icon(Icons.arrow_forward_ios, size: 12, color: color.withValues(alpha: 0.5)),
           ],
         ),
       ),
@@ -791,7 +819,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: theme.dividerColor),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
         ],
       ),
       child: Column(
@@ -854,7 +882,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               TextButton.icon(
                 onPressed: sms.isSyncing ? null : () => sms.syncNow(),
                 style: TextButton.styleFrom(
-                  backgroundColor: theme.primaryColor.withOpacity(0.1),
+                  backgroundColor: theme.primaryColor.withValues(alpha: 0.1),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 ),
@@ -893,7 +921,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.cloud_off_outlined, size: 80, color: theme.colorScheme.error.withOpacity(0.5)),
+            Icon(Icons.cloud_off_outlined, size: 80, color: theme.colorScheme.error.withValues(alpha: 0.5)),
             const SizedBox(height: 24),
             Text(
               'Server Unreachable',

@@ -14,6 +14,8 @@ import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:mobile_app/modules/home/services/categories_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mobile_app/core/widgets/app_shell.dart';
+import 'package:mobile_app/core/widgets/transaction_settings_sheet.dart';
+import 'package:mobile_app/modules/home/screens/add_transaction_screen.dart';
 import 'package:mobile_app/modules/home/screens/spending_heatmap_widget.dart';
 
 class AnalyticsScreen extends StatefulWidget {
@@ -247,7 +249,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 const SizedBox(height: 32),
                                 _buildSectionTitle(context, 'Spending Geographical Heatmap'),
                                 const SizedBox(height: 12),
-                                const SpendingHeatmapWidget(),
+                                SpendingHeatmapWidget(),
                                 const SizedBox(height: 32),
                                 _buildSectionTitle(context, 'Daily Activity (This Month)'),
                                 const SizedBox(height: 12),
@@ -341,6 +343,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             ),
         ],
       ),
+      floatingActionButton: _buildFab(context),
     );
   }
 
@@ -1092,13 +1095,23 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
         onTap: () => _showEditCategoryDialog(context, txn),
         leading: Consumer<CategoriesService>(
           builder: (context, catService, _) {
-            final catName = txn['category'] as String;
-            final matched = catService.categories
-                .cast<TransactionCategory?>()
-                .firstWhere(
-                  (c) => c?.name.toLowerCase() == catName.toLowerCase(),
-                  orElse: () => null,
-                );
+            final catNameRaw = txn['category'] as String;
+            final catName = catNameRaw.contains(' › ') ? catNameRaw.split(' › ').last : catNameRaw;
+            TransactionCategory? matched;
+
+            for (var parent in catService.categories) {
+              if (parent.name.toLowerCase() == catName.toLowerCase()) {
+                matched = parent;
+                break;
+              }
+              for (var sub in parent.subcategories) {
+                if (sub.name.toLowerCase() == catName.toLowerCase()) {
+                  matched = sub;
+                  break;
+                }
+              }
+              if (matched != null) break;
+            }
             
             return Container(
               width: 44,
@@ -1143,12 +1156,40 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   }
 
   void _showEditCategoryDialog(BuildContext context, dynamic txn) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Transaction analysis details available soon'), 
-        behavior: SnackBarBehavior.floating,
-        margin: EdgeInsets.all(20),
-      ),
+    final amountDec = Decimal.parse(txn['amount'].toString());
+    final model = RecentTransaction(
+      id: txn['id'],
+      date: DateTime.parse(txn['date']),
+      description: txn['description'],
+      amount: amountDec,
+      category: txn['category'],
+      isTransfer: txn['is_transfer'] == true,
+      excludeFromReports: txn['exclude_from_reports'] == true,
+      accountName: txn['account_name'],
+    );
+    TransactionSettingsSheet.show(context, model).then((updated) {
+      if (updated == true) {
+        context.read<DashboardService>().refresh();
+        _fetchTransactions(reset: true);
+      }
+    });
+  }
+
+  Widget _buildFab(BuildContext context) {
+    return FloatingActionButton(
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => AddTransactionScreen()),
+        ).then((val) {
+          if (val == true) {
+            context.read<DashboardService>().refresh();
+            _fetchTransactions(reset: true);
+          }
+        });
+      },
+      backgroundColor: AppTheme.primary,
+      child: const Icon(Icons.add, color: Colors.white),
     );
   }
 }

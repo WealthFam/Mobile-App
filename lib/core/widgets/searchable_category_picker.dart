@@ -48,7 +48,7 @@ class _SearchableCategoryPickerState extends State<SearchableCategoryPicker> {
       child: Column(
         children: [
           const SizedBox(height: 12),
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor.withOpacity(0.1), borderRadius: BorderRadius.circular(2))),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(2))),
           Padding(
             padding: const EdgeInsets.all(24),
             child: Row(
@@ -58,9 +58,11 @@ class _SearchableCategoryPickerState extends State<SearchableCategoryPicker> {
                     autofocus: true,
                     decoration: InputDecoration(
                       hintText: 'Search categories...', 
-                      prefixIcon: const Icon(Icons.search), 
+                      prefixIcon: const Icon(Icons.search, size: 20), 
                       filled: true, 
                       fillColor: theme.colorScheme.surface, 
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(100), borderSide: BorderSide.none)
                     ),
                     onChanged: (v) => setState(() => _searchQuery = v),
@@ -69,36 +71,48 @@ class _SearchableCategoryPickerState extends State<SearchableCategoryPicker> {
                 const SizedBox(width: 12),
                 IconButton(
                   onPressed: () => Navigator.pop(context), 
-                  icon: const Icon(Icons.close),
+                  icon: const Icon(Icons.close, size: 20),
                   style: IconButton.styleFrom(backgroundColor: theme.colorScheme.surface),
                 ),
               ],
             ),
           ),
           Expanded(
-            child: ListView.builder(
+            child: ListView(
               controller: widget.scrollController,
-              itemCount: filteredDisplay.length,
-              itemBuilder: (context, index) {
-                final cat = filteredDisplay[index];
-                final bool isSub = cat.parentId != null;
-                String? parentName;
-                if (isSub) {
-                   try {
-                     parentName = widget.categories.firstWhere((p) => p.id == cat.parentId).name;
-                   } catch (_) {
-                     parentName = 'Parent';
-                   }
-                }
-
-                if (!isSub && _searchQuery.isEmpty) {
-                   return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Padding(padding: const EdgeInsets.fromLTRB(24, 16, 24, 8), child: Text(cat.name.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: theme.primaryColor, letterSpacing: 1.2))),
-                    _buildCatTile(cat, isSub: false),
-                   ]);
-                }
-                return _buildCatTile(cat, isSub: isSub, parentName: parentName);
-              },
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: [
+                if (_searchQuery.isEmpty)
+                   _buildSectionHeader(theme, 'ALL CATEGORIES'),
+                
+                ...widget.categories.where((c) => c.parentId == null).map((parent) {
+                  final matchingSubs = parent.subcategories.where((s) => s.name.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+                  final bool parentMatches = parent.name.toLowerCase().contains(_searchQuery.toLowerCase());
+                  
+                  if (!parentMatches && matchingSubs.isEmpty) return const SizedBox.shrink();
+                  
+                  // Only show as a section if there are actually subcategories
+                  final bool hasSubcategories = parent.subcategories.isNotEmpty;
+                  
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (hasSubcategories && _searchQuery.isEmpty)
+                        _buildParentHeader(theme, parent),
+                      
+                      if (parentMatches)
+                        _buildCatTile(parent, isSub: false),
+                        
+                      ...matchingSubs.map((sub) => _buildCatTile(sub, isSub: true, parentName: parent.name)),
+                      
+                      if (_searchQuery.isEmpty && hasSubcategories)
+                        const SizedBox(height: 12),
+                    ],
+                  );
+                }),
+                
+                const SizedBox(height: 48),
+              ],
             ),
           ),
         ],
@@ -106,15 +120,54 @@ class _SearchableCategoryPickerState extends State<SearchableCategoryPicker> {
     );
   }
 
+  Widget _buildSectionHeader(ThemeData theme, String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+      child: Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: theme.disabledColor, letterSpacing: 1.5)),
+    );
+  }
+
+  Widget _buildParentHeader(ThemeData theme, TransactionCategory parent) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+      child: Text(parent.name.toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w900, color: theme.primaryColor.withValues(alpha: 0.6), letterSpacing: 1.0)),
+    );
+  }
+
   Widget _buildCatTile(TransactionCategory cat, {bool isSub = false, String? parentName}) {
-    final isSelected = widget.selected == cat.name;
+    final fullPath = isSub ? '$parentName › ${cat.name}' : cat.name;
+    final isSelected = widget.selected.toLowerCase().trim() == fullPath.toLowerCase().trim() || 
+                      (isSub && widget.selected.toLowerCase().trim() == cat.name.toLowerCase().trim());
+                      
     final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 24),
-      leading: Padding(padding: EdgeInsets.only(left: isSub ? 16 : 0), child: Text(cat.icon ?? (isSub ? '🔹' : '🏷️'), style: TextStyle(fontSize: isSub ? 14 : 18))),
-      title: Text(isSub && _searchQuery.isNotEmpty ? '${parentName!} > ${cat.name}' : cat.name, style: TextStyle(fontWeight: isSelected ? FontWeight.w900 : (isSub ? FontWeight.w500 : FontWeight.bold), fontSize: isSub ? 13 : 14, color: isSub ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface)),
-      trailing: isSelected ? const Icon(Icons.check_circle, color: AppTheme.success, size: 20) : null,
-      onTap: () => widget.onSelected(cat.name),
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 2),
+      child: ListTile(
+        dense: true,
+        contentPadding: EdgeInsets.only(left: isSub ? 28 : 12, right: 12),
+        visualDensity: VisualDensity.compact,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        tileColor: isSelected ? theme.primaryColor.withValues(alpha: 0.05) : null,
+        leading: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSub)
+               Padding(padding: const EdgeInsets.only(right: 8), child: Text('└', style: TextStyle(color: theme.disabledColor, fontSize: 14))),
+            Text(cat.icon ?? (isSub ? '🔹' : '🏷️'), style: TextStyle(fontSize: isSub ? 16 : 18)),
+          ],
+        ),
+        title: Text(
+          isSub && _searchQuery.isNotEmpty ? fullPath : cat.name, 
+          style: TextStyle(
+            fontWeight: isSelected ? FontWeight.w900 : (isSub || _searchQuery.isNotEmpty ? FontWeight.w500 : FontWeight.bold), 
+            fontSize: isSub ? 13 : 14, 
+            color: isSelected ? theme.primaryColor : (isSub ? theme.colorScheme.onSurfaceVariant : theme.colorScheme.onSurface)
+          )
+        ),
+        trailing: isSelected ? Icon(Icons.check_circle, color: theme.primaryColor, size: 18) : null,
+        onTap: () => widget.onSelected(fullPath),
+      ),
     );
   }
 }

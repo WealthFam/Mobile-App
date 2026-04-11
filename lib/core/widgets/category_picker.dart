@@ -54,15 +54,43 @@ class CategoryPickerField extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              categories.any((c) => c.name == selectedCategory) 
-                  ? (categories.firstWhere((c) => c.name == selectedCategory).icon ?? '🏷️') 
-                  : (selectedCategory == 'Uncategorized' ? '📁' : '🏷️'),
+              () {
+                final leafName = selectedCategory.contains(' › ') 
+                    ? selectedCategory.split(' › ').last 
+                    : selectedCategory;
+                
+                // Search top-level and subcategories
+                for (var cat in categories) {
+                  if (cat.name == leafName) return cat.icon ?? '🏷️';
+                  for (var sub in cat.subcategories) {
+                    if (sub.name == leafName) return sub.icon ?? (cat.icon ?? '🏷️');
+                  }
+                }
+                return selectedCategory == 'Uncategorized' ? '📁' : '🏷️';
+              }(),
               style: const TextStyle(fontSize: 16)
             ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                selectedCategory, 
+                () {
+                  if (selectedCategory.contains(' › ') || selectedCategory == 'Uncategorized') {
+                    return selectedCategory;
+                  }
+                  
+                  // Try to find if this leaf name belongs to a hierarchy
+                  for (var cat in categories) {
+                    for (var sub in cat.subcategories) {
+                      if (sub.name.toLowerCase() == selectedCategory.toLowerCase()) {
+                        return '${cat.name} › ${sub.name}';
+                      }
+                    }
+                    if (cat.name.toLowerCase() == selectedCategory.toLowerCase()) {
+                      return cat.name;
+                    }
+                  }
+                  return selectedCategory;
+                }(),
                 style: TextStyle(
                   fontSize: 13, 
                   fontWeight: FontWeight.bold,

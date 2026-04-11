@@ -257,9 +257,12 @@ class RecentTransaction {
   final String description;
   final Decimal amount;
   final String category;
+  final String? accountId;
   final String? accountName;
   final String? accountOwnerName;
   final bool isHidden;
+  final bool isTransfer;
+  final bool excludeFromReports;
   final String? expenseGroupId;
   final String? expenseGroupName;
   final String? source;
@@ -270,9 +273,12 @@ class RecentTransaction {
     required this.description,
     required this.amount,
     required this.category,
+    this.accountId,
     this.accountName,
     this.accountOwnerName,
     this.isHidden = false,
+    this.isTransfer = false,
+    this.excludeFromReports = false,
     this.expenseGroupId,
     this.expenseGroupName,
     this.source,
@@ -285,9 +291,12 @@ class RecentTransaction {
       description: json['description'] ?? '',
       amount: _toDecimal(json['amount']),
       category: json['category'] ?? 'Uncategorized',
+      accountId: json['account_id'],
       accountName: json['account_name'],
       accountOwnerName: json['account_owner_name'],
       isHidden: json['is_hidden'] ?? false,
+      isTransfer: json['is_transfer'] ?? false,
+      excludeFromReports: json['exclude_from_reports'] ?? false,
       expenseGroupId: json['expense_group_id'],
       expenseGroupName: json['expense_group_name'],
       source: json['source'],
@@ -300,9 +309,12 @@ class RecentTransaction {
     'description': description,
     'amount': amount.toString(),
     'category': category,
+    'account_id': accountId,
     'account_name': accountName,
     'account_owner_name': accountOwnerName,
     'is_hidden': isHidden,
+    'is_transfer': isTransfer,
+    'exclude_from_reports': excludeFromReports,
     'expense_group_id': expenseGroupId,
     'expense_group_name': expenseGroupName,
     'source': source,
