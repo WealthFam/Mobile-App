@@ -12,6 +12,7 @@ import 'package:mobile_app/modules/ingestion/screens/transaction_review_screen.d
 import 'package:mobile_app/modules/ingestion/screens/neural_training_screen.dart';
 import 'package:mobile_app/modules/home/services/categories_service.dart';
 import 'package:mobile_app/modules/home/models/transaction_category.dart';
+import 'package:mobile_app/modules/ingestion/screens/sms_management_screen.dart';
 import 'package:mobile_app/core/services/socket_service.dart';
 import 'package:mobile_app/core/config/app_config.dart';
 import 'package:mobile_app/modules/config/screens/sync_settings_screen.dart';
@@ -873,7 +874,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               _buildHealthStat(context, 'Last Sync', lastSyncStr),
               _buildHealthStat(context, 'Today', sms.messagesSyncedToday.toString()),
-              _buildHealthStat(context, 'Unsynced', sms.queueCount.toString(), isWarning: sms.queueCount > 0),
+              _buildHealthStat(
+                context, 
+                'Unsynced', 
+                sms.queueCount.toString(), 
+                isWarning: sms.queueCount > 0,
+                onTap: () => _showUnsyncedMessagesSheet(context),
+              ),
             ],
           ),
           const Divider(height: 32),
@@ -914,18 +921,143 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHealthStat(BuildContext context, String label, String value, {bool isWarning = false}) {
+  Widget _buildHealthStat(BuildContext context, String label, String value, {bool isWarning = false, VoidCallback? onTap}) {
     final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
-        Text(value, style: TextStyle(
-          fontWeight: FontWeight.bold, 
-          fontSize: 16,
-          color: isWarning ? AppTheme.warning : theme.colorScheme.onSurface
-        )),
-      ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 11)),
+            Text(value, style: TextStyle(
+              fontWeight: FontWeight.bold, 
+              fontSize: 16,
+              color: isWarning ? AppTheme.warning : theme.colorScheme.onSurface
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showUnsyncedMessagesSheet(BuildContext context) {
+    final sms = context.read<SmsService>();
+    final items = sms.getQueueItems();
+    final theme = Theme.of(context);
+
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No messages pending sync')));
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.7,
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: theme.dividerColor, borderRadius: BorderRadius.circular(2))),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                children: [
+                   Container(
+                     padding: const EdgeInsets.all(12),
+                     decoration: BoxDecoration(color: AppTheme.warning.withValues(alpha: 0.1), shape: BoxShape.circle),
+                     child: const Icon(Icons.sync_problem, color: AppTheme.warning),
+                   ),
+                   const SizedBox(width: 16),
+                   Expanded(
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         Text('${items.length} Unsynced Messages', style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
+                         const Text('Cached locally due to connection issues', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                       ],
+                     ),
+                   ),
+                   IconButton(onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close)),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                itemCount: items.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 16),
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final date = DateTime.fromMillisecondsSinceEpoch(item['date'] ?? 0);
+                  final timeStr = DateFormat('dd MMM, HH:mm').format(date);
+                  
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: theme.dividerColor),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(item['address'] ?? 'Unknown', style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text(timeStr, style: TextStyle(fontSize: 11, color: theme.colorScheme.onSurfaceVariant)),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(item['body'] ?? '', style: const TextStyle(fontSize: 13)),
+                        if (item['latitude'] != null) ...[
+                           const SizedBox(height: 8),
+                           Row(
+                             children: [
+                               const Icon(Icons.location_on, size: 10, color: AppTheme.primary),
+                               const SizedBox(width: 4),
+                               Text('Location Attached', style: TextStyle(fontSize: 10, color: theme.primaryColor, fontWeight: FontWeight.bold)),
+                             ],
+                           ),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    sms.retryQueue();
+                  },
+                  icon: const Icon(Icons.cloud_upload),
+                  label: const Text('Sync All Now', style: TextStyle(fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.all(16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
