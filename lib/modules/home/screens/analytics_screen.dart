@@ -255,8 +255,8 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 () {
                                   final year = dashboard.selectedYear ?? DateTime.now().year;
                                   final month = dashboard.selectedMonth ?? DateTime.now().month;
-                                  final firstDay = DateTime(year, month, 1);
-                                  final lastDay = DateTime(year, month + 1, 0); 
+                                  final lastDay = DateTime(year, month + 1, 0, 23, 59, 59); 
+                                  final firstDay = lastDay.subtract(const Duration(days: 364));
                                   return CalendarHeatmapWidget(
                                     data: dashboard.data!.calendarHeatmap,
                                     maskingFactor: dashboard.maskingFactor,

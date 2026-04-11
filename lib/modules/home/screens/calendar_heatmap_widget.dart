@@ -142,6 +142,7 @@ class CalendarHeatmapWidget extends StatelessWidget {
     return Column(
       children: days.map((d) => Container(
         height: 12,
+        margin: const EdgeInsets.symmetric(vertical: 0.8),
         alignment: Alignment.centerLeft,
         child: Text(d, style: TextStyle(fontSize: 8, color: theme.colorScheme.onSurface.withOpacity(0.4))),
       )).toList(),
@@ -156,7 +157,7 @@ class CalendarHeatmapWidget extends StatelessWidget {
 
   Widget _buildDayTile(BuildContext context, DateTime? day, double maxVal) {
     if (day == null) {
-      return Container(width: 10, height: 10, margin: const EdgeInsets.all(1));
+      return Container(width: 12, height: 12, margin: const EdgeInsets.all(0.8));
     }
     
     final dateStr = DateFormat('yyyy-MM-dd').format(day);
@@ -177,12 +178,12 @@ class CalendarHeatmapWidget extends StatelessWidget {
     return Tooltip(
       message: '${DateFormat('MMM d, yyyy').format(day)}: $amount',
       child: Container(
-        width: 10,
-        height: 10,
-        margin: const EdgeInsets.all(1),
+        width: 12,
+        height: 12,
+        margin: const EdgeInsets.all(0.8),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(2.5),
         ),
       ),
     );
@@ -211,12 +212,12 @@ class CalendarHeatmapWidget extends StatelessWidget {
         const Text("Less", style: TextStyle(fontSize: 9, color: Colors.grey)),
         const SizedBox(width: 4),
         ...List.generate(5, (i) => Container(
-          width: 10,
-          height: 10,
+          width: 12,
+          height: 12,
           margin: const EdgeInsets.symmetric(horizontal: 1),
           decoration: BoxDecoration(
             color: _getIntensityColor(context, i),
-            borderRadius: BorderRadius.circular(2),
+            borderRadius: BorderRadius.circular(2.5),
           ),
         )),
         const SizedBox(width: 4),
