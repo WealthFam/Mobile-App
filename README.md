@@ -4,7 +4,7 @@
 
 [![Version](https://img.shields.io/badge/Version-Flutter--M3-02569B?style=for-the-badge&logo=flutter)](https://flutter.dev/)
 [![Language](https://img.shields.io/badge/Dart-3.x-0175C2?style=for-the-badge&logo=dart)](https://dart.dev/)
-[![Ingestion](https://img.shields.io/badge/Source-Real_Time_SMS-e11d48?style=for-the-badge)](https://flutter.dev/)
+[![Status](https://img.shields.io/badge/Docs-Technical_Hub-e11d48?style=for-the-badge)](https://wealthfam.github.io/docs)
 
 **The mobile companion for real-time financial forensic ingestion.**  
 *Seamlessly capturing the pulse of your finances as they happen.*
@@ -19,7 +19,10 @@ WealthFam Mobile (Android) serves as the primary gateway for real-time data capt
 
 ---
 
-## 🛠️ Technical Stack
+## 🛠️ Technical Stack at a Glance
+
+For a detailed breakdown of our technical choices, see:  
+[**📖 Deep Dive: The WealthFam Stack**](../Docs/technical/stack.md)
 
 | Category | Technology |
 | :--- | :--- |
@@ -30,19 +33,22 @@ WealthFam Mobile (Android) serves as the primary gateway for real-time data capt
 
 ---
 
-## 🏁 Development
+## 🏗️ Architecture
 
-To run the mobile app locally or build for Android, please refer to the technical guides:
+The app uses a dual-layer approach, combining Flutter UI with low-level Android native listeners for high-reliability background ingestion.
 
-[**🛠️ Master Setup Guide**](../../Docs/technical/development/setup.md)
+- **[🏛️ System Overview](../Docs/technical/architecture/system_overview.md)**
+- **[📲 Native Architecture](../Docs/technical/mobile/native_architecture.md)**
 
 ---
 
-## 📖 Key Documentation
-- **[📲 Native Architecture](../../Docs/technical/mobile/native_architecture.md)**: SMS listeners & security.
-- **[🛠️ Technical Setup](../../Docs/technical/development/setup.md)**: Environment installation.
+## 🏁 Development Setup
+
+To build the mobile app or contribute to the native listeners:
+
+[**🛠️ Master Setup Guide**](../Docs/technical/getting_started.md)
 
 ---
 <div align="center">
-*Maintained by the WealthFam Mobile Team*
+*Maintained by the WealthFam Mobile Engineering Team*
 </div>
