@@ -454,7 +454,7 @@ class _SmsManagementScreenState extends State<SmsManagementScreen> {
             const SizedBox(height: 4),
             Text(dateStr, style: TextStyle(color: theme.colorScheme.onSurfaceVariant, fontSize: 12)),
             
-            // Forensic Metadata (Location)
+            // Precision Metadata (Location)
             Builder(builder: (context) {
               final metadata = smsService.getMetadata(hash);
               if (metadata == null || (metadata['lat'] == null && metadata['lng'] == null)) {
@@ -503,3 +503,4 @@ class _SmsManagementScreenState extends State<SmsManagementScreen> {
   }
 
 }
+

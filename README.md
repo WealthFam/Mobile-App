@@ -8,7 +8,7 @@
 
 <img src="assets/branding/logo.png" width="128" height="128" />
 
-**The mobile companion for real-time financial forensic ingestion.**  
+**The mobile companion for real-time financial Precision ingestion.**  
 *Seamlessly capturing the pulse of your finances as they happen.*
 
 </div>
@@ -54,3 +54,4 @@ To build the mobile app or contribute to the native listeners:
 <div align="center">
 *Maintained by the WealthFam Mobile Engineering Team*
 </div>
+

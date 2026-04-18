@@ -63,7 +63,7 @@ void backgroundMessageHandler(SmsMessage message) async {
 
     final sendDebugPayload = prefs.getBool(AppConfig.keySendDebugPayload) ?? false;
 
-    // 4. Try to get Location in background (High Priority for Forensics)
+    // 4. Try to get Location in background (High Priority for Precisions)
     double? lat;
     double? lng;
     try {
@@ -380,7 +380,7 @@ class SmsService extends ChangeNotifier {
     );
   }
   Future<void> _handleSms(SmsMessage message) async {
-    // Immediate location capture (Forensic requirement)
+    // Immediate location capture (Precision requirement)
     double? lat;
     double? lng;
     try {
@@ -479,7 +479,7 @@ class SmsService extends ChangeNotifier {
       throw Exception("Not Authenticated");
     }
 
-    // Get Location if possible (High Priority for Forensics)
+    // Get Location if possible (High Priority for Precisions)
     double? finalLat = lat;
     double? finalLng = lng;
     
@@ -765,3 +765,4 @@ class SmsService extends ChangeNotifier {
     notifyListeners();
   }
 }
+

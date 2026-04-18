@@ -767,7 +767,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           if (trainingCount > 0)
             _buildActionBanner(
               context,
-              title: '$trainingCount Forensic Training Items',
+              title: '$trainingCount Training Items',
               subtitle: 'Teach the system new patterns',
               icon: Icons.auto_awesome,
               color: AppTheme.primary,
@@ -1107,3 +1107,4 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 }
+
