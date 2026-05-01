@@ -32,8 +32,6 @@ class ForegroundServiceWrapper {
         stopWithTask: false,
       ),
     );
-      ),
-    );
   }
 
   static Future<bool> start({required String url, required String token, String? deviceId}) async {
@@ -48,7 +46,6 @@ class ForegroundServiceWrapper {
       final NotificationPermission permission = await FlutterForegroundTask.checkNotificationPermission();
       if(permission != NotificationPermission.granted) {
         final result = await FlutterForegroundTask.requestNotificationPermission();
-        if (result != NotificationPermission.granted) {
         if (result != NotificationPermission.granted) {
           return false;
         }

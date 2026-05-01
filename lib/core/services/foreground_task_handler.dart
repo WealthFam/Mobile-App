@@ -316,6 +316,8 @@ class SyncTaskHandler extends TaskHandler {
         });
         return true;
       } else {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.reload();
         final offlineQueue = prefs.getStringList('sms_offline_queue') ?? [];
         offlineQueue.add(jsonEncode(payload));
         await prefs.setStringList('sms_offline_queue', offlineQueue);

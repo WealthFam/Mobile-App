@@ -444,12 +444,6 @@ class SmsService extends ChangeNotifier {
     notifyListeners();
   }
 
-  void forceRefresh(String hash) {
-      _syncedHashes.add(hash);
-      notifyListeners();
-    }
-  }
-
   Future<void> _cacheHash(String hash) async => cacheHash(hash);
   
   // Ensure credentials are saved for Background Isolate
