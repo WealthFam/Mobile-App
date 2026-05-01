@@ -29,16 +29,12 @@ class SyncTaskHandler extends TaskHandler {
   @override
   @pragma('vm:entry-point')
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
-    debugPrint("ForegroundTask: Isolate Pulse - onStart triggered at $timestamp");
-    
-    // Resolve absolute path dynamically
     try {
       final Directory? appDir = await getApplicationSupportDirectory().catchError((_) => null);
       _resolvedFilesPath = appDir?.parent.path ?? '/data/user/0/com.wealthfam.mobile_app';
     } catch (e) {
       _resolvedFilesPath = '/data/user/0/com.wealthfam.mobile_app';
     }
-    debugPrint("ForegroundTask: Resolved Data Path: $_resolvedFilesPath");
 
     // Perform a one-time catch-up scan of the last 24h quietly in the background
     _performCatchUpScan(); 
@@ -46,9 +42,6 @@ class SyncTaskHandler extends TaskHandler {
     // Start reliable 5s timer for native queue check
     _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
       _eventCount++;
-      if (_eventCount % 12 == 0) {
-        debugPrint("ForegroundTask: Heartbeat - Scanner is active (Cycle: $_eventCount)");
-      }
       _checkNativeSmsQueue();
       
       // Every 5 minutes: Retry offline queue
@@ -165,9 +158,6 @@ class SyncTaskHandler extends TaskHandler {
       final rootPath = _resolvedFilesPath ?? '/data/user/0/com.wealthfam.mobile_app';
       final directory = Directory('$rootPath/files/sms_relay');
       
-      if (_eventCount % 12 == 0) { // Log once a minute to avoid spam
-         debugPrint("ForegroundTask: Scanning directory: ${directory.path}");
-      }
 
       if (!await directory.exists()) {
         _isProcessingQueue = false;
@@ -251,7 +241,6 @@ class SyncTaskHandler extends TaskHandler {
       }
 
       if (url == null || token == null) {
-        debugPrint("ForegroundTask: Sync aborted, missing credentials (URL: $url, Token: ${token != null ? 'Present' : 'Missing'})");
         return false;
       }
 
@@ -299,11 +288,9 @@ class SyncTaskHandler extends TaskHandler {
           if (response.statusCode == 200 || response.statusCode == 201) {
             success = true;
           } else {
-            debugPrint("ForegroundTask: Sync attempt $attempts failed with status: ${response.statusCode}");
             if (attempts < 5) await Future.delayed(const Duration(seconds: 2));
           }
         } catch (e) {
-          debugPrint("ForegroundTask: Sync attempt $attempts exception: $e");
           if (attempts < 5) await Future.delayed(const Duration(seconds: 2));
         }
       }
