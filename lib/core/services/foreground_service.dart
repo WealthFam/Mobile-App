@@ -35,6 +35,7 @@ class ForegroundServiceWrapper {
   }
 
   static Future<bool> start({required String url, required String token, String? deviceId}) async {
+    debugPrint("ForegroundService: Start Requested");
     
     try {
       await FlutterForegroundTask.saveData(key: 'backend_url', value: url);
@@ -77,8 +78,9 @@ class ForegroundServiceWrapper {
       );
       
       if (result is ServiceRequestFailure) {
-        // Handle failure silently or log to AppLogger if available
+        debugPrint("ForegroundService: Start failed: ${result.error}");
       } else {
+        debugPrint("ForegroundService: Start success: $result");
         _triggerManualUpdate();
       }
       
