@@ -233,7 +233,7 @@ class SyncTaskHandler extends TaskHandler {
             final String content = await file.readAsString();
             final data = jsonDecode(content) as Map<String, dynamic>;
 
-            final success = await _handleNativeSms(data, isRetry: false);
+            final success = await _handleNativeSms(data);
             if (success) {
               if (await file.exists()) {
                 await file.delete();
@@ -258,7 +258,7 @@ class SyncTaskHandler extends TaskHandler {
   @pragma('vm:entry-point')
   void onReceiveData(Object data) {
     if (data is Map<String, dynamic> && data['type'] == 'sms') {
-      _handleNativeSms(data, isRetry: false);
+      _handleNativeSms(data);
     }
   }
 
@@ -411,7 +411,7 @@ class SyncTaskHandler extends TaskHandler {
           offlineQueue.add(jsonEncode(payload));
           await prefs.setStringList('sms_offline_queue', offlineQueue);
         }
-        return isRetry ? false : true; // If retry, return false so caller keeps it in queue
+        return !isRetry; // If retry, return false so caller keeps it in queue
       }
     } catch (e) {
       // General handling failure

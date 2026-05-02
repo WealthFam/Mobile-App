@@ -6,6 +6,7 @@ import 'package:mobile_app/core/widgets/app_shell.dart';
 import 'package:mobile_app/modules/home/screens/analytics_screen.dart';
 import 'package:mobile_app/modules/home/screens/dashboard_screen.dart';
 import 'package:mobile_app/modules/home/screens/mutual_funds_screen.dart';
+import 'package:mobile_app/modules/home/screens/transactions_screen.dart';
 import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
     DashboardScreen(
       onMenuPressed: () => appShellScaffoldKey.currentState?.openDrawer(),
     ),
+    const TransactionsScreen(),
     const MutualFundsScreen(),
   ];
 
@@ -61,6 +63,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: Icon(Icons.dashboard_outlined),
                 selectedIcon: Icon(Icons.dashboard),
                 label: 'Dashboard',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long),
+                label: 'Transactions',
               ),
               NavigationDestination(
                 icon: Icon(Icons.trending_up_outlined),

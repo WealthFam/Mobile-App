@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_app/core/config/app_config.dart';
+import 'package:mobile_app/core/services/navigation_service.dart';
 import 'package:mobile_app/core/services/notification_service.dart';
 import 'package:mobile_app/core/services/socket_service.dart';
 import 'package:mobile_app/core/theme/app_theme.dart';
@@ -20,7 +21,6 @@ import 'package:mobile_app/modules/home/screens/transaction_detail_screen.dart';
 import 'package:mobile_app/modules/home/services/categories_service.dart';
 import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:mobile_app/modules/ingestion/screens/neural_training_screen.dart';
-import 'package:mobile_app/modules/ingestion/screens/transaction_review_screen.dart';
 import 'package:mobile_app/modules/ingestion/services/sms_service.dart';
 import 'package:provider/provider.dart';
 
@@ -271,12 +271,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.push<void>(
-                            context,
-                            MaterialPageRoute<void>(
-                              builder: (_) => const AnalyticsScreen(),
-                            ),
-                          );
+                          context.read<NavigationProvider>().switchToTransactions();
                         },
                         child: const Text('See All'),
                       ),
@@ -997,12 +992,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               subtitle: 'Verify low-confidence items',
               icon: Icons.fact_check_outlined,
               color: AppTheme.warning,
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(
-                  builder: (_) => const TransactionReviewScreen(),
-                ),
-              ),
+              onTap: () => context.read<NavigationProvider>().switchToTransactions(tab: 1),
             ),
           if (triageCount > 0 && trainingCount > 0) const SizedBox(height: 12),
           if (trainingCount > 0)

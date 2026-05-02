@@ -8,6 +8,7 @@ import 'package:mobile_app/modules/home/screens/categories_management_screen.dar
 import 'package:mobile_app/modules/home/screens/expense_groups_screen.dart';
 import 'package:mobile_app/modules/home/screens/goals_screen.dart';
 import 'package:mobile_app/modules/home/screens/mutual_funds_screen.dart';
+import 'package:mobile_app/modules/home/screens/transactions_screen.dart';
 import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:mobile_app/modules/ingestion/screens/sms_management_screen.dart';
 import 'package:mobile_app/modules/vault/screens/vault_screen.dart';
@@ -222,6 +223,12 @@ class AppDrawer extends StatelessWidget {
                   },
                 ),
                 item(
+                  Icons.receipt_long_outlined,
+                  'Transactions',
+                  const TransactionsScreen(),
+                  tabIndex: 2,
+                ),
+                item(
                   Icons.analytics_outlined,
                   'Insights & Analytics',
                   const AnalyticsScreen(),
@@ -238,7 +245,7 @@ class AppDrawer extends StatelessWidget {
                   Icons.trending_up,
                   'Mutual Funds',
                   const MutualFundsScreen(),
-                  tabIndex: 2,
+                  tabIndex: 3,
                 ),
                 item(
                   Icons.track_changes,

@@ -12,7 +12,8 @@ import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:provider/provider.dart';
 
 class TransactionReviewScreen extends StatefulWidget {
-  const TransactionReviewScreen({super.key});
+  const TransactionReviewScreen({super.key, this.isEmbedded = false});
+  final bool isEmbedded;
 
   @override
   State<TransactionReviewScreen> createState() =>
@@ -230,6 +231,33 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
     final count =
         context.watch<DashboardService>().data?.pendingTriageCount ?? 0;
 
+    final content = _isLoading
+        ? const Center(child: CircularProgressIndicator())
+        : _error != null
+            ? Center(
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: AppTheme.danger),
+                ),
+              )
+            : _triageItems.isEmpty
+                ? _buildEmptyState()
+                : RefreshIndicator(
+                    onRefresh: _loadData,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: _triageItems.length,
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: 16),
+                      itemBuilder: (context, index) =>
+                          _buildTriageCard(_triageItems[index]),
+                    ),
+                  );
+
+    if (widget.isEmbedded) {
+      return content;
+    }
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
@@ -239,28 +267,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
         ),
         elevation: 0,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? Center(
-              child: Text(
-                _error!,
-                style: const TextStyle(color: AppTheme.danger),
-              ),
-            )
-          : _triageItems.isEmpty
-          ? _buildEmptyState()
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: ListView.separated(
-                padding: const EdgeInsets.all(16),
-                itemCount: _triageItems.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 16),
-                itemBuilder: (context, index) =>
-                    _buildTriageCard(_triageItems[index]),
-              ),
-            ),
+      body: content,
     );
   }
 
