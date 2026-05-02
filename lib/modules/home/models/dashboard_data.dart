@@ -281,6 +281,8 @@ class RecentTransaction {
     this.expenseGroupName,
     this.source,
     this.hasDocuments = false,
+    this.categoryIcon,
+    this.recipient,
   });
 
   factory RecentTransaction.fromJson(Map<String, dynamic> json) {
@@ -300,6 +302,8 @@ class RecentTransaction {
       expenseGroupName: json['expense_group_name'] as String?,
       source: json['source'] as String?,
       hasDocuments: json['has_documents'] as bool? ?? false,
+      categoryIcon: json['category_icon'] as String?,
+      recipient: json['recipient'] as String?,
     );
   }
   final String id;
@@ -317,6 +321,8 @@ class RecentTransaction {
   final String? expenseGroupName;
   final String? source;
   final bool hasDocuments;
+  final String? categoryIcon;
+  final String? recipient;
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -334,6 +340,8 @@ class RecentTransaction {
     'expense_group_name': expenseGroupName,
     'source': source,
     'has_documents': hasDocuments,
+    'category_icon': categoryIcon,
+    'recipient': recipient,
   };
 
   String get formattedDate => DateFormat('MMM d, h:mm a').format(date);

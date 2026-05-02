@@ -145,11 +145,11 @@ class VaultService extends ChangeNotifier with NetworkResilience {
   }
 
   String getThumbnailUrl(String docId) {
-    return '${_config.backendUrl}/api/v1/finance/vault/$docId/thumbnail';
+    return '${_config.backendUrl}/api/v1/mobile/vault/$docId/thumbnail';
   }
 
   String getDownloadUrl(String docId) {
-    return '${_config.backendUrl}/api/v1/finance/vault/$docId/download';
+    return '${_config.backendUrl}/api/v1/mobile/vault/$docId/download';
   }
 
   Map<String, String> get authHeaders => {
@@ -222,7 +222,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     final result = await callWithResilience<List<VaultDocument>>(
       call: () => http.get(
         Uri.parse(
-          '${_config.backendUrl}/api/v1/finance/vault',
+          '${_config.backendUrl}/api/v1/mobile/vault',
         ).replace(queryParameters: queryParams),
         headers: {...authHeaders, 'Content-Type': 'application/json'},
       ),
@@ -261,7 +261,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     final result = await callWithResilience<List<VaultDocument>>(
       call: () => http.get(
         Uri.parse(
-          '${_config.backendUrl}/api/v1/finance/vault',
+          '${_config.backendUrl}/api/v1/mobile/vault',
         ).replace(queryParameters: {'transaction_id': transactionId}),
         headers: authHeaders,
       ),
@@ -283,7 +283,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
 
     final result = await callWithResilience<List<VaultDocument>>(
       call: () => http.get(
-        Uri.parse('${_config.backendUrl}/api/v1/finance/vault').replace(
+        Uri.parse('${_config.backendUrl}/api/v1/mobile/vault').replace(
           queryParameters: {
             'is_folder': 'true',
             'parent_id': 'ALL', // Special value or just ignore parent?
@@ -372,7 +372,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
   Future<Either<Failure, Unit>> deleteDocument(String docId) async {
     final result = await callWithResilience<Unit>(
       call: () => http.delete(
-        Uri.parse('${_config.backendUrl}/api/v1/finance/vault/$docId'),
+        Uri.parse('${_config.backendUrl}/api/v1/mobile/vault/$docId'),
         headers: authHeaders,
       ),
       onSuccess: (_) {
@@ -393,7 +393,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
 
     final result = await callWithResilience<Unit>(
       call: () => http.patch(
-        Uri.parse('${_config.backendUrl}/api/v1/finance/vault/move'),
+        Uri.parse('${_config.backendUrl}/api/v1/mobile/vault/move'),
         headers: {...authHeaders, 'Content-Type': 'application/json'},
         body: jsonEncode({
           'doc_ids': docIds,
@@ -422,7 +422,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     final result = await callWithResilience<Unit>(
       call: () => http.patch(
         Uri.parse(
-          '${_config.backendUrl}/api/v1/finance/vault/$docId/link-transaction',
+          '${_config.backendUrl}/api/v1/mobile/vault/$docId/link-transaction',
         ),
         headers: {...authHeaders, 'Content-Type': 'application/json'},
         body: jsonEncode({'transaction_id': transactionId}),
@@ -455,7 +455,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     _isLoading = true;
     notifyListeners();
 
-    final url = Uri.parse('${_config.backendUrl}/api/v1/finance/vault/upload');
+    final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/vault/upload');
 
     final result = await callWithResilience<Unit>(
       call: () async {
@@ -503,7 +503,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
   }) async {
     try {
       final url = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/vault',
+        '${_config.backendUrl}/api/v1/mobile/vault',
       ).replace(queryParameters: {'parent_id': parentId ?? ''});
 
       final response = await http.get(url, headers: authHeaders);
@@ -521,7 +521,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
 
       // Not found, create it
       final createUrl = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/vault/folders',
+        '${_config.backendUrl}/api/v1/mobile/vault/folders',
       );
       final request = http.MultipartRequest('POST', createUrl)
         ..headers.addAll(authHeaders)
@@ -549,7 +549,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     _isLoading = true;
     notifyListeners();
 
-    final url = Uri.parse('${_config.backendUrl}/api/v1/finance/vault/folders');
+    final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/vault/folders');
 
     final result = await callWithResilience<Unit>(
       call: () async {
@@ -582,7 +582,7 @@ class VaultService extends ChangeNotifier with NetworkResilience {
     _isLoading = true;
     notifyListeners();
 
-    final url = Uri.parse('${_config.backendUrl}/api/v1/finance/vault/$docId');
+    final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/vault/$docId');
 
     final result = await callWithResilience<Unit>(
       call: () async {

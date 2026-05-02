@@ -223,7 +223,7 @@ class _SearchableCategoryPickerState extends State<SearchableCategoryPicker> {
                 ),
               ),
             Text(
-              cat.icon ?? (isSub ? '🔹' : '🏷️'),
+              cat.displayIcon,
               style: TextStyle(fontSize: isSub ? 16 : 18),
             ),
           ],

@@ -3,16 +3,112 @@ import 'package:intl/intl.dart';
 import 'package:mobile_app/core/theme/app_theme.dart';
 import 'package:mobile_app/core/widgets/transaction_settings_sheet.dart';
 import 'package:mobile_app/modules/home/models/dashboard_data.dart';
+import 'package:mobile_app/modules/home/services/categories_service.dart';
 import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:provider/provider.dart';
 
-class TransactionDetailScreen extends StatelessWidget {
+import 'package:mobile_app/modules/vault/services/vault_service.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:open_filex/open_filex.dart';
 
+class TransactionDetailScreen extends StatefulWidget {
   const TransactionDetailScreen({required this.transaction, super.key});
   final RecentTransaction transaction;
 
   @override
+  State<TransactionDetailScreen> createState() => _TransactionDetailScreenState();
+}
+
+class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
+  Map<String, dynamic>? _vendorStats;
+  List<VaultDocument> _attachedDocs = [];
+  bool _isLoadingStats = false;
+  bool _isLoadingDocs = false;
+
+  final List<dynamic> _vendorTransactions = [];
+  int _vendorSkip = 0;
+  bool _isLoadingMoreVendorTxns = false;
+  bool _hasMoreVendorTxns = true;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchData();
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+        _fetchVendorStats(loadMore: true);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fetchData() async {
+    _fetchVendorStats();
+    _fetchAttachedDocs();
+  }
+
+  Future<void> _fetchVendorStats({bool loadMore = false}) async {
+    if (loadMore && (_isLoadingMoreVendorTxns || !_hasMoreVendorTxns)) return;
+    
+    final recipient = widget.transaction.recipient ?? widget.transaction.description;
+    if (recipient.isEmpty) return;
+    
+    if (loadMore) {
+      setState(() => _isLoadingMoreVendorTxns = true);
+    } else {
+      setState(() {
+        _isLoadingStats = true;
+        _vendorSkip = 0;
+        _vendorTransactions.clear();
+      });
+    }
+    
+    final dashboard = context.read<DashboardService>();
+    final result = await dashboard.fetchVendorStats(recipient, skip: _vendorSkip, limit: 10);
+    
+    if (mounted) {
+      result.fold(
+        (failure) => debugPrint('Failed to fetch vendor stats: ${failure.message}'),
+        (stats) {
+          setState(() {
+            if (!loadMore) _vendorStats = stats;
+            final newTxns = stats['recent_transactions'] as List<dynamic>;
+            _vendorTransactions.addAll(newTxns);
+            _hasMoreVendorTxns = newTxns.length == 10;
+            _vendorSkip += newTxns.length;
+          });
+        },
+      );
+      setState(() {
+        _isLoadingStats = false;
+        _isLoadingMoreVendorTxns = false;
+      });
+    }
+  }
+
+  Future<void> _fetchAttachedDocs() async {
+    setState(() => _isLoadingDocs = true);
+    final vault = context.read<VaultService>();
+    final docs = await vault.getLinkedDocuments(widget.transaction.id);
+    
+    if (mounted) {
+      setState(() {
+        _attachedDocs = docs;
+        _isLoadingDocs = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final transaction = widget.transaction;
     final dashboard = context.watch<DashboardService>();
     final theme = Theme.of(context);
     final currencyFormat = NumberFormat.currency(
@@ -26,45 +122,88 @@ class TransactionDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: CustomScrollView(
+        controller: _scrollController,
         slivers: [
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 220,
             pinned: true,
+            stretch: true,
+            backgroundColor: AppTheme.primary,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, color: Colors.white),
+                onPressed: () {
+                  TransactionSettingsSheet.show(context, transaction);
+                },
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
+              stretchModes: const [StretchMode.zoomBackground, StretchMode.blurBackground],
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      AppTheme.primary.withValues(alpha: 0.8),
                       AppTheme.primary,
+                      AppTheme.primary.withValues(alpha: 0.8),
+                      theme.colorScheme.secondary,
                     ],
                   ),
                 ),
-                child: Center(
+                child: SafeArea(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                       Text(
                         formattedAmount,
                         style: const TextStyle(
-                          fontSize: 36,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 42,
+                          fontWeight: FontWeight.w900,
                           color: Colors.white,
+                          letterSpacing: -1,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(20),
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                         ),
-                        child: Text(
-                          transaction.category,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Builder(
+                              builder: (context) {
+                                final icon = transaction.categoryIcon ??
+                                    context.read<CategoriesService>()
+                                        .getIconForCategory(transaction.category);
+                                if (icon != null && icon.isNotEmpty) {
+                                  return Text(
+                                    '$icon ',
+                                    style: const TextStyle(fontSize: 16),
+                                  );
+                                }
+                                return const SizedBox.shrink();
+                              },
+                            ),
+                            Text(
+                              transaction.category.toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ],
@@ -72,30 +211,307 @@ class TransactionDetailScreen extends StatelessWidget {
                 ),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.edit_outlined),
-                onPressed: () {
-                  TransactionSettingsSheet.show(context, transaction);
-                },
-              ),
-            ],
           ),
           SliverToBoxAdapter(
             child: Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInfoCard(theme, transaction),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  if (widget.transaction.recipient != null || widget.transaction.description.isNotEmpty) ...[
+                    _buildVendorInsightsSection(theme),
+                    const SizedBox(height: 32),
+                  ],
+                  _buildEvidenceSection(theme),
+                  const SizedBox(height: 32),
                   _buildTimelineSection(theme, transaction),
-                  const SizedBox(height: 24),
-                  _buildEvidenceSection(theme, transaction),
                   const SizedBox(height: 40),
-                  _buildActionButtons(context, transaction),
+                  if (_vendorTransactions.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'VENDOR HISTORY',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ],
               ),
+            ),
+          ),
+          if (_vendorTransactions.isNotEmpty)
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, index) {
+                    if (index < _vendorTransactions.length) {
+                      final txn = _vendorTransactions[index];
+                      return _buildVendorTransactionItem(txn);
+                    }
+                    if (_isLoadingMoreVendorTxns) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(child: CircularProgressIndicator.adaptive()),
+                      );
+                    }
+                    if (!_hasMoreVendorTxns) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 20),
+                        child: Center(
+                          child: Text(
+                            'No more transactions for this vendor',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      );
+                    }
+                    return null;
+                  },
+                  childCount: _vendorTransactions.length + (_isLoadingMoreVendorTxns || !_hasMoreVendorTxns ? 1 : 0),
+                ),
+              ),
+            ),
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVendorInsightsSection(ThemeData theme) {
+    if (_isLoadingStats) {
+      return const Center(child: CircularProgressIndicator.adaptive());
+    }
+    if (_vendorStats == null) return const SizedBox.shrink();
+
+    final dashboard = context.read<DashboardService>();
+    final chartData = _vendorStats!['chart_data'] as List<dynamic>;
+    final totalSpent = _vendorStats!['total_spent'] as num;
+    final avgTxn = _vendorStats!['average_transaction'] as num;
+
+    final currencyFormat = NumberFormat.currency(
+      symbol: dashboard.currencySymbol,
+      decimalDigits: 0,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Text(
+                'INSIGHTS: ${widget.transaction.recipient ?? widget.transaction.description}'.toUpperCase(),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                  color: Colors.grey,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Total: ${currencyFormat.format(totalSpent.abs() / dashboard.maskingFactor)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'Avg: ${currencyFormat.format(avgTxn.abs() / dashboard.maskingFactor)}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        
+        // Trend Chart
+        if (chartData.isNotEmpty)
+          Container(
+            height: 160,
+            padding: const EdgeInsets.only(top: 20, right: 10),
+            child: LineChart(
+              LineChartData(
+                lineTouchData: LineTouchData(
+                  touchTooltipData: LineTouchTooltipData(
+                    getTooltipColor: (spot) => AppTheme.primary,
+                    getTooltipItems: (spots) => spots.map((s) {
+                      return LineTooltipItem(
+                        currencyFormat.format(s.y / dashboard.maskingFactor),
+                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                gridData: const FlGridData(show: false),
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 22,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= chartData.length) return const SizedBox.shrink();
+                        final monthStr = chartData[index]['month'] as String;
+                        final monthPart = monthStr.split('-').last;
+                        final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                        return Text(
+                          months[int.parse(monthPart) - 1],
+                          style: const TextStyle(fontSize: 9, color: Colors.grey),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                ),
+                borderData: FlBorderData(show: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: chartData.asMap().entries.map((e) {
+                      return FlSpot(e.key.toDouble(), (e.value['amount'] as num).toDouble());
+                    }).toList(),
+                    isCurved: true,
+                    color: AppTheme.primary,
+                    barWidth: 3,
+                    isStrokeCapRound: true,
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                        radius: 3,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: AppTheme.primary,
+                      ),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          AppTheme.primary.withValues(alpha: 0.2),
+                          AppTheme.primary.withValues(alpha: 0.0),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildVendorTransactionItem(dynamic txn) {
+    final dashboard = context.read<DashboardService>();
+    final date = DateTime.parse(txn['date'] as String);
+    final amount = txn['amount'] as num;
+    final currencyFormat = NumberFormat.currency(
+      symbol: dashboard.currencySymbol,
+      decimalDigits: 0,
+    );
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              DateFormat('dd MMM').format(date).toUpperCase(),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppTheme.primary,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (txn['description'] as String?) ?? 'No description',
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (txn['category'] != null)
+                  Text(
+                    (txn['category'] as String).toUpperCase(),
+                    style: TextStyle(fontSize: 9, color: Colors.grey.shade500, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+                  ),
+              ],
+            ),
+          ),
+          Text(
+            currencyFormat.format(amount.abs() / dashboard.maskingFactor),
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+              color: amount < 0 ? AppTheme.danger : AppTheme.success,
+              letterSpacing: -0.5,
             ),
           ),
         ],
@@ -104,47 +520,83 @@ class TransactionDetailScreen extends StatelessWidget {
   }
 
   Widget _buildInfoCard(ThemeData theme, RecentTransaction tx) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildInfoRow(Icons.description_outlined, 'Description', tx.description),
-            const Divider(height: 24),
-            _buildInfoRow(Icons.calendar_today_outlined, 'Date & Time', tx.formattedDate),
-            const Divider(height: 24),
-            _buildInfoRow(Icons.account_balance_wallet_outlined, 'Account', tx.accountName ?? 'Manual Entry'),
-            if (tx.accountOwnerName != null) ...[
-              const Divider(height: 24),
-              _buildInfoRow(Icons.person_outline, 'Owner', tx.accountOwnerName!),
-            ],
-            const Divider(height: 24),
-            _buildInfoRow(
-              Icons.tag_outlined,
-              'Source',
-              tx.source?.toUpperCase() ?? 'DIRECT',
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
+      child: Column(
+        children: [
+          _buildInfoRow(Icons.description_outlined, 'DESCRIPTION', tx.description),
+          _buildDivider(),
+          _buildInfoRow(Icons.calendar_today_outlined, 'DATE & TIME', tx.formattedDate),
+          _buildDivider(),
+          _buildInfoRow(Icons.account_balance_wallet_outlined, 'FUND SOURCE', tx.accountName ?? 'Manual Entry'),
+          if (tx.accountOwnerName != null) ...[
+            _buildDivider(),
+            _buildInfoRow(Icons.person_outline, 'OWNED BY', tx.accountOwnerName!),
+          ],
+          _buildDivider(),
+          _buildInfoRow(
+            Icons.bolt_outlined,
+            'INGESTION',
+            tx.source?.toUpperCase() ?? 'DIRECT',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDivider() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Divider(height: 1, color: Colors.grey.withValues(alpha: 0.1)),
     );
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Colors.grey),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: AppTheme.primary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, size: 20, color: AppTheme.primary),
+        ),
         const SizedBox(width: 16),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.grey,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -238,7 +690,7 @@ class TransactionDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEvidenceSection(ThemeData theme, RecentTransaction tx) {
+  Widget _buildEvidenceSection(ThemeData theme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,22 +701,22 @@ class TransactionDetailScreen extends StatelessWidget {
               'Evidence & Receipts',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            TextButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.add_a_photo_outlined, size: 18),
-              label: const Text('Add'),
+            IconButton(
+              onPressed: _showAddEvidenceDialog,
+              icon: const Icon(Icons.add_circle_outline, color: AppTheme.primary),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        if (!tx.hasDocuments)
+        if (_isLoadingDocs)
+          const Center(child: CircularProgressIndicator.adaptive())
+        else if (_attachedDocs.isEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.grey[100],
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.grey[300]!, style: BorderStyle.none),
             ),
             child: const Column(
               children: [
@@ -278,37 +730,280 @@ class TransactionDetailScreen extends StatelessWidget {
             ),
           )
         else
-          const Center(child: Text('Linked Documents UI Here')),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.5,
+            ),
+            itemCount: _attachedDocs.length,
+            itemBuilder: (context, index) {
+              final doc = _attachedDocs[index];
+              return _buildDocCard(doc);
+            },
+          ),
       ],
     );
   }
 
-  Widget _buildActionButtons(BuildContext context, RecentTransaction tx) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.share_outlined),
-            label: const Text('Share'),
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-          ),
+  Widget _buildDocCard(VaultDocument doc) {
+    final theme = Theme.of(context);
+    return InkWell(
+      onTap: () => _openDocument(doc),
+      child: Container(
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.archive_outlined),
-            label: const Text('Archive'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _getDocIcon(doc.mimeType),
+                    color: AppTheme.primary.withValues(alpha: 0.5),
+                    size: 32,
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      doc.filename,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: IconButton(
+                icon: const Icon(Icons.close, size: 16, color: AppTheme.danger),
+                onPressed: () => _detachDoc(doc.id),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Future<void> _openDocument(VaultDocument doc) async {
+    final vault = context.read<VaultService>();
+    final result = await vault.saveDocument(doc);
+    
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to download: ${failure.message}')),
+      ),
+      (path) async {
+        await OpenFilex.open(path);
+      },
+    );
+  }
+
+  IconData _getDocIcon(String? mimeType) {
+    if (mimeType == null) return Icons.insert_drive_file_outlined;
+    if (mimeType.contains('pdf')) return Icons.picture_as_pdf_outlined;
+    if (mimeType.contains('image')) return Icons.image_outlined;
+    if (mimeType.contains('sheet') || mimeType.contains('excel') || mimeType.contains('csv')) {
+      return Icons.table_chart_outlined;
+    }
+    return Icons.insert_drive_file_outlined;
+  }
+
+  Future<void> _detachDoc(String docId) async {
+    final vault = context.read<VaultService>();
+    final result = await vault.linkTransaction(docId, null);
+    
+    result.fold(
+      (failure) => ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to detach: ${failure.message}')),
+      ),
+      (_) => _fetchAttachedDocs(),
+    );
+  }
+
+  void _showAddEvidenceDialog() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(16.0),
+              child: Text(
+                'Add Evidence',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.upload_file),
+              title: const Text('Upload New File'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickAndUploadFile();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: const Text('Link from Vault'),
+              onTap: () {
+                Navigator.pop(context);
+                _showVaultPicker();
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showVaultPicker() {
+    // Show a dialog to pick a document from the vault
+    showDialog<void>(
+      context: context,
+      builder: (context) => _VaultDocPicker(
+        onDocSelected: (doc) async {
+          final vault = context.read<VaultService>();
+          final result = await vault.linkTransaction(doc.id, widget.transaction.id);
+          result.fold(
+            (failure) => debugPrint('Link failed'),
+            (_) => _fetchAttachedDocs(),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadFile() async {
+    final result = await FilePicker.platform.pickFiles();
+    if (result == null || result.files.single.path == null) return;
+
+    final file = result.files.single;
+    final vault = context.read<VaultService>();
+    final messenger = ScaffoldMessenger.of(context);
+    
+    setState(() => _isLoadingDocs = true);
+    final uploadResult = await vault.uploadDocument(
+      filePath: file.path!,
+      fileName: file.name,
+      transactionId: widget.transaction.id,
+      isShared: true,
+    );
+
+    uploadResult.fold(
+      (failure) {
+        if (!mounted) return;
+        setState(() => _isLoadingDocs = false);
+        messenger.showSnackBar(
+          SnackBar(content: Text('Upload failed: ${failure.message}')),
+        );
+      },
+      (_) {
+        if (mounted) _fetchAttachedDocs();
+      },
+    );
+  }
+}
+
+class _VaultDocPicker extends StatefulWidget {
+  const _VaultDocPicker({required this.onDocSelected});
+  final Function(VaultDocument) onDocSelected;
+
+  @override
+  State<_VaultDocPicker> createState() => _VaultDocPickerState();
+}
+
+class _VaultDocPickerState extends State<_VaultDocPicker> {
+  String _search = '';
+  List<VaultDocument> _docs = [];
+  bool _loading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    setState(() => _loading = true);
+    final vault = context.read<VaultService>();
+    // We fetch root documents or search
+    await vault.fetchDocuments(search: _search.isEmpty ? null : _search);
+    if (mounted) {
+      setState(() {
+        _docs = vault.documents.where((d) => !d.isFolder).toList();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Link from Vault'),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              decoration: const InputDecoration(
+                hintText: 'Search documents...',
+                prefixIcon: Icon(Icons.search),
+              ),
+              onChanged: (val) {
+                setState(() => _search = val);
+                _fetch();
+              },
+            ),
+            const SizedBox(height: 16),
+            if (_loading)
+              const Center(child: CircularProgressIndicator.adaptive())
+            else if (_docs.isEmpty)
+              const Center(child: Text('No documents found'))
+            else
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: _docs.length,
+                  itemBuilder: (context, index) {
+                    final doc = _docs[index];
+                    return ListTile(
+                      leading: const Icon(Icons.insert_drive_file_outlined),
+                      title: Text(doc.filename),
+                      subtitle: Text(doc.fileType),
+                      onTap: () {
+                        widget.onDocSelected(doc);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
       ],
     );
   }

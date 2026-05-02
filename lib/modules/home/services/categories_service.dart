@@ -190,4 +190,21 @@ class CategoriesService extends ChangeNotifier {
       return false;
     }
   }
+
+  String? getIconForCategory(String categoryPath) {
+    if (_categories.isEmpty) return null;
+    final leaf = categoryPath.contains(' › ')
+        ? categoryPath.split(' › ').last
+        : categoryPath;
+
+    for (var cat in _categories) {
+      if (cat.name.toLowerCase() == leaf.toLowerCase()) return cat.displayIcon;
+      for (var sub in cat.subcategories) {
+        if (sub.name.toLowerCase() == leaf.toLowerCase()) {
+          return sub.displayIcon;
+        }
+      }
+    }
+    return null;
+  }
 }

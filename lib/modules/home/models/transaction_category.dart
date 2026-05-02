@@ -29,6 +29,36 @@ class TransactionCategory {
   final String? parentId;
   final List<TransactionCategory> subcategories;
 
+  String get displayIcon {
+    if (icon != null && icon!.isNotEmpty) return icon!;
+
+    final lowerName = name.toLowerCase();
+    const defaultIcons = {
+      'food': '🍔',
+      'groceries': '🛒',
+      'rent': '🏠',
+      'shopping': '🛍️',
+      'transport': '🚗',
+      'travel': '✈️',
+      'health': '💊',
+      'entertainment': '🎬',
+      'utilities': '💡',
+      'salary': '💰',
+      'transfer': '↔️',
+      'investment': '📈',
+      'education': '🎓',
+      'gift': '🎁',
+      'other': '📦',
+      'uncategorized': '📁'
+    };
+
+    for (var entry in defaultIcons.entries) {
+      if (lowerName.contains(entry.key)) return entry.value;
+    }
+
+    return '🏷️';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,

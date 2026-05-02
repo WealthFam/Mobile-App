@@ -53,24 +53,11 @@ class CategoryPickerField extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(() {
-              final leafName = selectedCategory.contains(' › ')
-                  ? selectedCategory.split(' › ').last
-                  : selectedCategory;
-
-              // Search top-level and subcategories
-              for (var cat in categories) {
-                if (cat.name == leafName) {
-                  return cat.icon ?? '🏷️';
-                }
-                for (var sub in cat.subcategories) {
-                  if (sub.name == leafName) {
-                    return sub.icon ?? (cat.icon ?? '🏷️');
-                  }
-                }
-              }
-              return selectedCategory == 'Uncategorized' ? '📁' : '🏷️';
-            }(), style: const TextStyle(fontSize: 16)),
+            Text(
+              categoryService.getIconForCategory(selectedCategory) ??
+                  (selectedCategory == 'Uncategorized' ? '📁' : '🏷️'),
+              style: const TextStyle(fontSize: 16),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Text(

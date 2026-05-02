@@ -326,6 +326,26 @@ class DashboardService extends ChangeNotifier with NetworkResilience {
     });
   }
 
+  Future<Either<Failure, Map<String, dynamic>>> fetchVendorStats(
+    String vendorName, {
+    int skip = 0,
+    int limit = 5,
+  }) async {
+    return callWithResilience<Map<String, dynamic>>(
+      call: () => http.get(
+        Uri.parse('${_config.backendUrl}/api/v1/mobile/vendor/stats').replace(
+          queryParameters: {
+            'vendor_name': vendorName,
+            'skip': skip.toString(),
+            'limit': limit.toString(),
+          },
+        ),
+        headers: _getHeaders(),
+      ),
+      onSuccess: (body) => jsonDecode(body as String) as Map<String, dynamic>,
+    );
+  }
+
   Future<Either<Failure, List<dynamic>>> fetchAccounts() async {
     return callWithResilience<List<dynamic>>(
       call: () => http.get(

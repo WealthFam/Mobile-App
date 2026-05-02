@@ -46,12 +46,13 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
     final auth = context.read<AuthService>();
     try {
       final response = await http.get(
-        Uri.parse('${config.backendUrl}/api/v1/finance/accounts'),
+        Uri.parse('${config.backendUrl}/api/v1/mobile/accounts'),
         headers: {'Authorization': 'Bearer ${auth.accessToken}'},
       );
       if (response.statusCode == 200) {
         setState(() {
-          _accounts = jsonDecode(response.body) as List<dynamic>;
+          final body = jsonDecode(response.body);
+          _accounts = (body is List) ? body : (body['data'] as List<dynamic>);
         });
       }
     } catch (e) {
@@ -87,7 +88,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
     try {
       final config = context.read<AppConfig>();
       final auth = context.read<AuthService>();
-      final url = Uri.parse('${config.backendUrl}/api/v1/ingestion/triage');
+      final url = Uri.parse('${config.backendUrl}/api/v1/mobile/ingestion/triage');
       final response = await http.get(
         url,
         headers: {'Authorization': 'Bearer ${auth.accessToken}'},
@@ -95,7 +96,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
 
       if (response.statusCode == 200) {
         final raw =
-            (jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>)['data'] as List<dynamic>? ?? [];
+            (jsonDecode(utf8.decode(response.bodyBytes)) as List<dynamic>?) ?? [];
         final items = raw.map((i) => RecentTransaction.fromJson(i as Map<String, dynamic>)).toList();
 
         setState(() {
@@ -161,6 +162,95 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
         false;
   }
 
+  Future<bool> _showApproveDialog({
+    required RecentTransaction item,
+    required String category,
+  }) async {
+    final theme = Theme.of(context);
+    bool createRule = _createRuleFlags[item.id] ?? true;
+
+    return await showDialog<bool>(
+          context: context,
+          builder: (context) => StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                backgroundColor: theme.colorScheme.surface,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                title: const Text(
+                  'Approve Transaction',
+                  style: TextStyle(fontWeight: FontWeight.w900),
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Approve "${item.description}"?',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Category: $category',
+                      style: TextStyle(
+                        color: theme.colorScheme.onSurfaceVariant,
+                        fontSize: 13,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: CheckboxListTile(
+                        title: const Text(
+                          'Create auto-rule for this merchant',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        subtitle: const Text(
+                          'Future similar transactions will be auto-categorized',
+                          style: TextStyle(fontSize: 11),
+                        ),
+                        value: createRule,
+                        onChanged: (val) {
+                          setDialogState(() => createRule = val ?? true);
+                          setState(() => _createRuleFlags[item.id] = createRule);
+                        },
+                        controlAffinity: ListTileControlAffinity.leading,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.success,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: const Text('Approve'),
+                  ),
+                ],
+              );
+            },
+          ),
+        ) ??
+        false;
+  }
+
   Future<void> _processTriage(String id, bool approve) async {
     final config = context.read<AppConfig>();
     final auth = context.read<AuthService>();
@@ -170,7 +260,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
     try {
       if (approve) {
         final url = Uri.parse(
-          '${config.backendUrl}/api/v1/ingestion/triage/$id/approve',
+          '${config.backendUrl}/api/v1/mobile/ingestion/triage/$id/approve',
         );
         final response = await http.post(
           url,
@@ -199,7 +289,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
         if (!confirm) return;
 
         final url = Uri.parse(
-          '${config.backendUrl}/api/v1/ingestion/triage/$id',
+          '${config.backendUrl}/api/v1/mobile/ingestion/triage/$id',
         );
         final response = await http.delete(
           url,
@@ -327,15 +417,25 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      item.description,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                        letterSpacing: -0.5,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        if (item.hasDocuments) ...[
+                          const Icon(Icons.attach_file, size: 14, color: AppTheme.primary),
+                          const SizedBox(width: 4),
+                        ],
+                        Expanded(
+                          child: Text(
+                            item.description,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              letterSpacing: -0.5,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -396,7 +496,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
           ],
 
           const SizedBox(height: 16),
-          _buildActionRow(item, theme, isTransfer, isExcluded, createRule),
+          _buildActionRow(item, theme, isTransfer, isExcluded, createRule, category),
         ],
       ),
     );
@@ -566,6 +666,7 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
     bool isTransfer,
     bool isExcluded,
     bool createRule,
+    String category,
   ) {
     return Row(
       children: [
@@ -613,20 +714,31 @@ class _TransactionReviewScreenState extends State<TransactionReviewScreen> {
         const Spacer(),
 
         // Approve Button
-        ElevatedButton(
-          onPressed: () => _processTriage(item.id, true),
+        ElevatedButton.icon(
+          onPressed: (category == 'Uncategorized' || category.isEmpty)
+              ? null
+              : () async {
+                  final confirm = await _showApproveDialog(
+                    item: item,
+                    category: category,
+                  );
+                  if (confirm) _processTriage(item.id, true);
+                },
+          icon: const Icon(Icons.check_circle_outline, size: 18),
+          label: const Text(
+            'Approve',
+            style: TextStyle(fontWeight: FontWeight.w900),
+          ),
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.success,
             foregroundColor: Colors.white,
+            disabledBackgroundColor: theme.disabledColor.withValues(alpha: 0.1),
+            disabledForegroundColor: theme.disabledColor,
             elevation: 0,
-            minimumSize: const Size(100, 44),
+            minimumSize: const Size(120, 44),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-          ),
-          child: const Text(
-            'Approve',
-            style: TextStyle(fontWeight: FontWeight.w900),
           ),
         ),
       ],

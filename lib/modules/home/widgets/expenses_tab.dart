@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:mobile_app/core/config/app_config.dart';
 import 'package:mobile_app/core/theme/app_theme.dart';
+import 'package:mobile_app/core/widgets/searchable_category_picker.dart';
 import 'package:mobile_app/core/widgets/searchable_picker.dart';
 import 'package:mobile_app/core/widgets/transaction_settings_sheet.dart';
 import 'package:mobile_app/modules/auth/services/auth_service.dart';
@@ -32,7 +33,10 @@ class _ExpensesTabState extends State<ExpensesTab> {
 
   String? _selectedCategoryId;
   String? _selectedAccountId;
+  String _searchQuery = '';
   List<dynamic> _accounts = [];
+
+  String? _lastMemberId;
 
   @override
   void initState() {
@@ -87,14 +91,11 @@ class _ExpensesTabState extends State<ExpensesTab> {
       queryParameters: {
         'page': _page.toString(),
         'page_size': '20',
-        if (dashboard.selectedMonth != null)
-          'month': dashboard.selectedMonth.toString(),
-        if (dashboard.selectedYear != null)
-          'year': dashboard.selectedYear.toString(),
         if (dashboard.selectedMemberId != null)
           'member_id': dashboard.selectedMemberId,
         if (_selectedCategoryId != null) 'category': _selectedCategoryId,
         if (_selectedAccountId != null) 'account_id': _selectedAccountId,
+        if (_searchQuery.isNotEmpty) 'search': _searchQuery,
       },
     );
 
@@ -130,31 +131,20 @@ class _ExpensesTabState extends State<ExpensesTab> {
     }
   }
 
-  void _showMonthPicker() async {
-    final dashboard = context.read<DashboardService>();
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: DateTime(
-        dashboard.selectedYear ?? DateTime.now().year,
-        dashboard.selectedMonth ?? DateTime.now().month,
-      ),
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDatePickerMode: DatePickerMode.year,
-    );
-    if (picked != null) {
-      dashboard.setMonth(picked.month, picked.year);
-      _fetchTransactions(reset: true);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final dashboard = context.watch<DashboardService>();
     final categories = context.watch<CategoriesService>().categories;
 
+    // Auto-refresh when global filters change
+    if (_lastMemberId != dashboard.selectedMemberId) {
+      _lastMemberId = dashboard.selectedMemberId;
+      Future.microtask(() => _fetchTransactions(reset: true));
+    }
+
     return Column(
       children: [
+        _buildSearchBar(),
         _buildFilterBar(dashboard, categories),
         Expanded(
           child: RefreshIndicator(
@@ -175,12 +165,52 @@ class _ExpensesTabState extends State<ExpensesTab> {
                           child: Center(child: CircularProgressIndicator()),
                         );
                       }
-                      return _buildTransactionItem(_transactions[index]);
+                      final txn = _transactions[index];
+                      final prevTxn = index > 0 ? _transactions[index - 1] : null;
+                      final isNewDay = prevTxn == null || 
+                          txn.date.year != prevTxn.date.year ||
+                          txn.date.month != prevTxn.date.month ||
+                          txn.date.day != prevTxn.date.day;
+
+                      if (isNewDay) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildDateHeader(txn.date),
+                            _buildTransactionItem(txn),
+                          ],
+                        );
+                      }
+                      return _buildTransactionItem(txn);
                     },
                   ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: TextField(
+        onChanged: (val) {
+          setState(() => _searchQuery = val);
+          // Debounce could be added, but for now just fetch on change
+          _fetchTransactions(reset: true);
+        },
+        decoration: InputDecoration(
+          hintText: 'Search transactions...',
+          prefixIcon: const Icon(Icons.search, size: 20),
+          filled: true,
+          fillColor: Theme.of(context).cardColor.withValues(alpha: 0.5),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
     );
   }
 
@@ -201,17 +231,6 @@ class _ExpensesTabState extends State<ExpensesTab> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _FilterChip(
-              label: DateFormat('MMM yyyy').format(
-                DateTime(
-                  dashboard.selectedYear ?? DateTime.now().year,
-                  dashboard.selectedMonth ?? DateTime.now().month,
-                ),
-              ),
-              icon: Icons.calendar_today,
-              onTap: _showMonthPicker,
-            ),
-            const SizedBox(width: 8),
             _FilterChip(
               label: dashboard.selectedMemberId != null
                   ? (dashboard.members.firstWhere(
@@ -240,6 +259,34 @@ class _ExpensesTabState extends State<ExpensesTab> {
               onTap: _showAccountPicker(),
               isActive: _selectedAccountId != null,
             ),
+            if (dashboard.selectedMemberId != null ||
+                _selectedCategoryId != null ||
+                _selectedAccountId != null) ...[
+              const SizedBox(width: 12),
+              VerticalDivider(
+                width: 1,
+                indent: 8,
+                endIndent: 8,
+                color: Theme.of(context).dividerColor,
+              ),
+              const SizedBox(width: 12),
+              TextButton.icon(
+                onPressed: () {
+                  dashboard.setMember(null);
+                  setState(() {
+                    _selectedCategoryId = null;
+                    _selectedAccountId = null;
+                  });
+                  _fetchTransactions(reset: true);
+                },
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text('Reset', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(
+                  foregroundColor: AppTheme.danger,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -254,16 +301,26 @@ class _ExpensesTabState extends State<ExpensesTab> {
         children: [
           ListTile(
             title: const Text('Full Family'),
+            selected: dashboard.selectedMemberId == null,
             onTap: () {
               dashboard.setMember(null);
               Navigator.pop(context);
               _fetchTransactions(reset: true);
             },
           ),
+          const Divider(height: 1),
           ...dashboard.members.map((m) {
             final member = m as Map<String, dynamic>;
+            final isSelected = dashboard.selectedMemberId == member['id'];
             return ListTile(
-                title: Text(member['name'] as String),
+                title: Text(
+                  member['name'] as String,
+                  style: TextStyle(
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                selected: isSelected,
+                trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primary) : null,
                 onTap: () {
                   dashboard.setMember(member['id'] as String?);
                   Navigator.pop(context);
@@ -281,36 +338,91 @@ class _ExpensesTabState extends State<ExpensesTab> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => SearchablePickerModal(
-        title: 'Select Category',
-        items: categories,
-        labelMapper: (c) => (c as TransactionCategory).name,
-        onSelected: (val) {
-          setState(() => _selectedCategoryId = (val as TransactionCategory).name);
-          _fetchTransactions(reset: true);
-        },
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.5,
+        builder: (_, controller) => Column(
+          children: [
+            Expanded(
+              child: SearchableCategoryPicker(
+                categories: [
+                  TransactionCategory(id: 'all', name: 'All Categories', type: 'expense', icon: '📁'),
+                  ...categories.cast<TransactionCategory>(),
+                ],
+                selected: _selectedCategoryId ?? 'All Categories',
+                onSelected: (val) {
+                  if (val == 'All Categories') {
+                    setState(() => _selectedCategoryId = null);
+                  } else {
+                    // Extract leaf name if it's a hierarchy
+                    final leaf = val.contains(' › ') ? val.split(' › ').last : val;
+                    setState(() => _selectedCategoryId = leaf);
+                  }
+                  _fetchTransactions(reset: true);
+                  Navigator.pop(context);
+                },
+                scrollController: controller,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   VoidCallback _showAccountPicker() {
     return () {
+      final List<dynamic> items = [
+        {'id': 'all', 'name': 'All Accounts'},
+        ..._accounts,
+      ];
+
       showModalBottomSheet<void>(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) => SearchablePickerModal(
           title: 'Select Account',
-          items: _accounts,
+          items: items,
           labelMapper: (a) => (a as Map<String, dynamic>)['name'] as String,
           onSelected: (val) {
             final account = val as Map<String, dynamic>;
-            setState(() => _selectedAccountId = account['id'] as String);
+            setState(() => _selectedAccountId = account['id'] == 'all' ? null : account['id'] as String);
             _fetchTransactions(reset: true);
           },
         ),
       );
     };
+  }
+
+  Widget _buildDateHeader(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final itemDate = DateTime(date.year, date.month, date.day);
+
+    String label;
+    if (itemDate == today) {
+      label = 'Today';
+    } else if (itemDate == yesterday) {
+      label = 'Yesterday';
+    } else {
+      label = DateFormat('EEEE, d MMMM yyyy').format(date);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+      child: Text(
+        label.toUpperCase(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1.2,
+          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.4),
+        ),
+      ),
+    );
   }
 
   Widget _buildTransactionItem(RecentTransaction txn) {
@@ -335,9 +447,23 @@ class _ExpensesTabState extends State<ExpensesTab> {
         onLongPress: () => TransactionSettingsSheet.show(context, txn),
         leading: CircleAvatar(
           backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-          child: Text(
-            txn.category.isNotEmpty ? txn.category[0].toUpperCase() : '?',
-            style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold),
+          child: Builder(
+            builder: (context) {
+              final icon = txn.categoryIcon ??
+                  context.read<CategoriesService>().getIconForCategory(
+                    txn.category,
+                  );
+              if (icon != null && icon.isNotEmpty) {
+                return Text(icon, style: const TextStyle(fontSize: 18));
+              }
+              return Text(
+                txn.category.isNotEmpty ? txn.category[0].toUpperCase() : '?',
+                style: const TextStyle(
+                  color: AppTheme.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
           ),
         ),
         title: Text(
@@ -346,9 +472,21 @@ class _ExpensesTabState extends State<ExpensesTab> {
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        subtitle: Text(
-          '${txn.accountName} • ${txn.formattedDate}',
-          style: const TextStyle(fontSize: 11, color: Colors.grey),
+        subtitle: Row(
+          children: [
+            if (txn.hasDocuments) ...[
+              const Icon(Icons.attach_file, size: 12, color: AppTheme.primary),
+              const SizedBox(width: 4),
+            ],
+            Expanded(
+              child: Text(
+                '${txn.category} • ${txn.accountName ?? 'Unknown'} • ${txn.formattedDate}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+            ),
+          ],
         ),
         trailing: Text(
           '$currency${(txn.amount.abs().toDouble() / dashboard.maskingFactor).toStringAsFixed(0)}',
