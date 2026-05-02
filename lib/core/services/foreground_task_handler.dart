@@ -41,8 +41,8 @@ class SyncTaskHandler extends TaskHandler {
       _eventCount++;
       _checkNativeSmsQueue();
 
-      // Every 5 minutes: Retry offline queue
-      if (_eventCount % 60 == 0) {
+      // Every 20 seconds (4 ticks): Retry offline queue
+      if (_eventCount % 4 == 0) {
         _retryOfflineQueue();
       }
 
@@ -67,13 +67,15 @@ class SyncTaskHandler extends TaskHandler {
       for (final itemStr in queue) {
         try {
           final data = jsonDecode(itemStr) as Map<String, dynamic>;
-          final success = await _handleNativeSms(data);
+          // Important: Pass isRetry=true to avoid internal re-queuing and loop
+          final success = await _handleNativeSms(data, isRetry: true);
           if (!success) remaining.add(itemStr);
         } catch (_) {
-          // Keep corrupt items but don't block
           remaining.add(itemStr);
         }
       }
+      // Reload again to avoid race conditions with other processes
+      await prefs.reload();
       await prefs.setStringList('sms_offline_queue', remaining);
     } catch (e) {
       // Background retry failed, will try again in next cycle
@@ -147,7 +149,7 @@ class SyncTaskHandler extends TaskHandler {
             'date': msg.date,
             'latitude': batchLat,
             'longitude': batchLng,
-          });
+          }, isRetry: true);
         }
       }
     } catch (e) {
@@ -188,7 +190,7 @@ class SyncTaskHandler extends TaskHandler {
             final String content = await file.readAsString();
             final data = jsonDecode(content) as Map<String, dynamic>;
 
-            final success = await _handleNativeSms(data);
+            final success = await _handleNativeSms(data, isRetry: false);
             if (success) {
               if (await file.exists()) {
                 await file.delete();
@@ -213,11 +215,11 @@ class SyncTaskHandler extends TaskHandler {
   @pragma('vm:entry-point')
   void onReceiveData(Object data) {
     if (data is Map<String, dynamic> && data['type'] == 'sms') {
-      _handleNativeSms(data);
+      _handleNativeSms(data, isRetry: false);
     }
   }
 
-  Future<bool> _handleNativeSms(Map<String, dynamic> data) async {
+  Future<bool> _handleNativeSms(Map<String, dynamic> data, {bool isRetry = false}) async {
     final sender = (data['sender'] ?? '').toString();
     final message = (data['message'] ?? '').toString();
     final dynamic rawDate = data['date'];
@@ -296,8 +298,9 @@ class SyncTaskHandler extends TaskHandler {
 
       int attempts = 0;
       bool success = false;
+      final maxAttempts = isRetry ? 1 : 5;
 
-      while (attempts < 5 && !success) {
+      while (attempts < maxAttempts && !success) {
         attempts++;
         try {
           final response = await http
@@ -358,12 +361,14 @@ class SyncTaskHandler extends TaskHandler {
         });
         return true;
       } else {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.reload();
-        final offlineQueue = prefs.getStringList('sms_offline_queue') ?? [];
-        offlineQueue.add(jsonEncode(payload));
-        await prefs.setStringList('sms_offline_queue', offlineQueue);
-        return true; // Mark as processed from native queue so we don't loop forever
+        if (!isRetry) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.reload();
+          final offlineQueue = prefs.getStringList('sms_offline_queue') ?? [];
+          offlineQueue.add(jsonEncode(payload));
+          await prefs.setStringList('sms_offline_queue', offlineQueue);
+        }
+        return isRetry ? false : true; // If retry, return false so caller keeps it in queue
       }
     } catch (e) {
       // General handling failure

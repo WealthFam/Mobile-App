@@ -210,9 +210,9 @@ class SmsService extends ChangeNotifier {
         }
       });
 
-      // Periodic retry every 5 minutes
+      // Periodic retry every 30 seconds
       _retryTimer = Timer.periodic(
-        const Duration(minutes: 5),
+        const Duration(seconds: 30),
         (_) => retryQueue(),
       );
     }
