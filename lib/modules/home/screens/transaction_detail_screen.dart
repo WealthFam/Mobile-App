@@ -371,39 +371,65 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
         const SizedBox(height: 16),
         
         // Trend Chart
-        if (chartData.isNotEmpty)
+        if (chartData.isNotEmpty) ...[
           Container(
-            height: 160,
-            padding: const EdgeInsets.only(top: 20, right: 10),
+            height: 180,
+            padding: const EdgeInsets.only(top: 24, right: 10, left: 10),
+            decoration: BoxDecoration(
+              color: AppTheme.primary.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(20),
+            ),
             child: LineChart(
               LineChartData(
                 lineTouchData: LineTouchData(
+                  handleBuiltInTouches: true,
                   touchTooltipData: LineTouchTooltipData(
-                    getTooltipColor: (spot) => AppTheme.primary,
+                    getTooltipColor: (spot) => AppTheme.primary.withValues(alpha: 0.9),
                     getTooltipItems: (spots) => spots.map((s) {
                       return LineTooltipItem(
                         currencyFormat.format(s.y / dashboard.maskingFactor),
-                        const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10),
+                        const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 11,
+                        ),
                       );
                     }).toList(),
                   ),
                 ),
-                gridData: const FlGridData(show: false),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: 1,
+                  getDrawingHorizontalLine: (value) => FlLine(
+                    color: Colors.grey.withValues(alpha: 0.05),
+                    strokeWidth: 1,
+                  ),
+                ),
                 titlesData: FlTitlesData(
                   show: true,
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 22,
+                      reservedSize: 30,
+                      interval: 1,
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
                         if (index < 0 || index >= chartData.length) return const SizedBox.shrink();
                         final monthStr = chartData[index]['month'] as String;
                         final monthPart = monthStr.split('-').last;
-                        final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                        return Text(
-                          months[int.parse(monthPart) - 1],
-                          style: const TextStyle(fontSize: 9, color: Colors.grey),
+                        final months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Text(
+                            months[int.parse(monthPart) - 1],
+                            style: const TextStyle(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.grey,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         );
                       },
                     ),
@@ -419,17 +445,34 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                       return FlSpot(e.key.toDouble(), (e.value['amount'] as num).toDouble());
                     }).toList(),
                     isCurved: true,
+                    curveSmoothness: 0.4,
                     color: AppTheme.primary,
-                    barWidth: 3,
+                    barWidth: 4,
                     isStrokeCapRound: true,
+                    shadow: Shadow(
+                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 15,
+                      offset: const Offset(0, 7),
+                    ),
                     dotData: FlDotData(
                       show: true,
-                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
-                        radius: 3,
-                        color: Colors.white,
-                        strokeWidth: 2,
-                        strokeColor: AppTheme.primary,
-                      ),
+                      checkToShowDot: (spot, barData) {
+                        final spots = barData.spots;
+                        final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+                        final minY = spots.map((s) => s.y).reduce((a, b) => a < b ? a : b);
+                        return spot.y == maxY || spot.y == minY;
+                      },
+                      getDotPainter: (spot, percent, barData, index) {
+                        final spots = barData.spots;
+                        final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
+                        final isMax = spot.y == maxY;
+                        return FlDotCirclePainter(
+                          radius: isMax ? 6 : 4,
+                          color: isMax ? AppTheme.primary : Colors.white,
+                          strokeWidth: 3,
+                          strokeColor: isMax ? Colors.white : AppTheme.primary,
+                        );
+                      },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
@@ -437,7 +480,8 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppTheme.primary.withValues(alpha: 0.2),
+                          AppTheme.primary.withValues(alpha: 0.25),
+                          AppTheme.primary.withValues(alpha: 0.05),
                           AppTheme.primary.withValues(alpha: 0.0),
                         ],
                       ),
@@ -447,6 +491,34 @@ class _TransactionDetailScreenState extends State<TransactionDetailScreen> {
               ),
             ),
           ),
+          const SizedBox(height: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _buildTrendInfo('Highest', chartData.map((e) => (e['amount'] as num).toDouble()).reduce((a, b) => a > b ? a : b), currencyFormat, dashboard),
+                _buildTrendInfo('Lowest', chartData.map((e) => (e['amount'] as num).toDouble()).reduce((a, b) => a < b ? a : b), currencyFormat, dashboard),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTrendInfo(String label, double amount, NumberFormat format, DashboardService dashboard) {
+    return Column(
+      crossAxisAlignment: label == 'Highest' ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: Colors.grey, letterSpacing: 1),
+        ),
+        Text(
+          format.format(amount / dashboard.maskingFactor),
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
