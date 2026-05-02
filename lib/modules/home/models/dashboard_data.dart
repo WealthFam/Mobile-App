@@ -16,7 +16,6 @@ class DashboardData {
     required this.spendingTrend, required this.categoryDistribution, required this.monthWiseTrend, required this.recentTransactions, this.investmentSummary,
     this.calendarHeatmap = const {},
     this.pendingTriageCount = 0,
-    this.pendingTrainingCount = 0,
     this.familyMembersCount,
   });
 
@@ -50,7 +49,6 @@ class DashboardData {
             (k, v) => MapEntry(k, _toDecimal(v)),
           ),
       pendingTriageCount: json['pending_triage_count'] as int? ?? 0,
-      pendingTrainingCount: json['pending_training_count'] as int? ?? 0,
       familyMembersCount: json['family_members_count'] as int?,
     );
   }
@@ -63,7 +61,6 @@ class DashboardData {
   final List<RecentTransaction> recentTransactions;
   final Map<String, Decimal> calendarHeatmap;
   final int pendingTriageCount;
-  final int pendingTrainingCount;
   final int? familyMembersCount;
 
   Map<String, dynamic> toJson() {
@@ -81,7 +78,6 @@ class DashboardData {
         (k, v) => MapEntry(k, v.toString()),
       ),
       'pending_triage_count': pendingTriageCount,
-      'pending_training_count': pendingTrainingCount,
       'family_members_count': familyMembersCount,
     };
   }
@@ -96,7 +92,6 @@ class DashboardData {
     List<RecentTransaction>? recentTransactions,
     Map<String, Decimal>? calendarHeatmap,
     int? pendingTriageCount,
-    int? pendingTrainingCount,
     int? familyMembersCount,
   }) {
     return DashboardData(
@@ -109,7 +104,6 @@ class DashboardData {
       recentTransactions: recentTransactions ?? this.recentTransactions,
       calendarHeatmap: calendarHeatmap ?? this.calendarHeatmap,
       pendingTriageCount: pendingTriageCount ?? this.pendingTriageCount,
-      pendingTrainingCount: pendingTrainingCount ?? this.pendingTrainingCount,
       familyMembersCount: familyMembersCount ?? this.familyMembersCount,
     );
   }

@@ -20,7 +20,6 @@ import 'package:mobile_app/modules/home/screens/mutual_funds_screen.dart';
 import 'package:mobile_app/modules/home/screens/transaction_detail_screen.dart';
 import 'package:mobile_app/modules/home/services/categories_service.dart';
 import 'package:mobile_app/modules/home/services/dashboard_service.dart';
-import 'package:mobile_app/modules/ingestion/screens/neural_training_screen.dart';
 import 'package:mobile_app/modules/ingestion/services/sms_service.dart';
 import 'package:provider/provider.dart';
 
@@ -241,13 +240,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   formatAmount,
                 ),
               ),
-              if (dashboard.data!.pendingTriageCount > 0 ||
-                  dashboard.data!.pendingTrainingCount > 0)
+              if (dashboard.data!.pendingTriageCount > 0)
                 SliverToBoxAdapter(
                   child: _buildTriageBanner(
                     context,
                     dashboard.data!.pendingTriageCount,
-                    dashboard.data!.pendingTrainingCount,
                   ),
                 ),
               SliverToBoxAdapter(
@@ -977,37 +974,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildTriageBanner(
     BuildContext context,
     int triageCount,
-    int trainingCount,
   ) {
-    if (triageCount == 0 && trainingCount == 0) return const SizedBox.shrink();
+    if (triageCount == 0) return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        children: [
-          if (triageCount > 0)
-            _buildActionBanner(
-              context,
-              title: 'Review $triageCount Transactions',
-              subtitle: 'Verify low-confidence items',
-              icon: Icons.fact_check_outlined,
-              color: AppTheme.warning,
-              onTap: () => context.read<NavigationProvider>().switchToTransactions(tab: 1),
-            ),
-          if (triageCount > 0 && trainingCount > 0) const SizedBox(height: 12),
-          if (trainingCount > 0)
-            _buildActionBanner(
-              context,
-              title: '$trainingCount Training Items',
-              subtitle: 'Teach the system new patterns',
-              icon: Icons.auto_awesome,
-              color: AppTheme.primary,
-              onTap: () => Navigator.push<void>(
-                context,
-                MaterialPageRoute<void>(builder: (_) => const NeuralTrainingScreen()),
-              ),
-            ),
-        ],
+      child: _buildActionBanner(
+        context,
+        title: 'Review $triageCount Transactions',
+        subtitle: 'Verify low-confidence items',
+        icon: Icons.fact_check_outlined,
+        color: AppTheme.warning,
+        onTap: () => context.read<NavigationProvider>().switchToTransactions(tab: 1),
       ),
     );
   }

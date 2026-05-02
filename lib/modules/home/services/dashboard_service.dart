@@ -12,7 +12,6 @@ import 'package:mobile_app/core/utils/logger.dart';
 import 'package:mobile_app/core/utils/network_resilience.dart';
 import 'package:mobile_app/modules/auth/services/auth_service.dart';
 import 'package:mobile_app/modules/home/models/dashboard_data.dart';
-import 'package:mobile_app/modules/home/models/unparsed_message.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -231,7 +230,6 @@ class DashboardService extends ChangeNotifier with NetworkResilience {
           budget: budget,
           recentTransactions: txns,
           pendingTriageCount: (data['pending_triage_count'] as num?)?.toInt(),
-          pendingTrainingCount: (data['pending_training_count'] as num?)?.toInt() ?? 0,
           familyMembersCount: (data['family_members_count'] as num?)?.toInt(),
         ),
       );
@@ -328,60 +326,6 @@ class DashboardService extends ChangeNotifier with NetworkResilience {
     });
   }
 
-  Future<Either<Failure, List<UnparsedMessage>>> fetchTrainingQueue({
-    String? search,
-  }) async {
-    return callWithResilience<List<UnparsedMessage>>(
-      call: () => http.get(
-        Uri.parse('${_config.backendUrl}/api/v1/ingestion/training').replace(
-          queryParameters: {
-            if (search != null && search.isNotEmpty) 'search': search,
-          },
-        ),
-        headers: _getHeaders(),
-      ),
-onSuccess: (body) {
-        final data = jsonDecode(body as String) as Map<String, dynamic>;
-        final items = data['data'] as List? ?? [];
-        return items.map((i) => UnparsedMessage.fromJson(i as Map<String, dynamic>)).toList();
-      },
-    );
-  }
-
-  Future<Either<Failure, Unit>> finalizeTraining({
-    required String messageId,
-    required DateTime date,
-    required String description,
-    required Decimal amount,
-    required String category,
-    String? accountId,
-    String? accountMask,
-    String type = 'DEBIT',
-    bool createRule = true,
-    bool applyToUnparsed = true,
-  }) async {
-    return callWithResilience<Unit>(
-      call: () => http.post(
-        Uri.parse(
-          '${_config.backendUrl}/api/v1/ingestion/training/$messageId/label',
-        ),
-        headers: _getHeaders(),
-        body: jsonEncode({
-          'date': date.toUtc().toIso8601String(),
-          'recipient': description,
-          'amount': amount,
-          'category': category,
-          'account_id': accountId,
-          'account_mask': accountMask,
-          'type': type,
-          'generate_pattern': createRule,
-          'apply_to_unparsed': applyToUnparsed,
-        }),
-      ),
-      onSuccess: (_) => unit,
-    );
-  }
-
   Future<Either<Failure, List<dynamic>>> fetchAccounts() async {
     return callWithResilience<List<dynamic>>(
       call: () => http.get(
@@ -392,78 +336,7 @@ onSuccess: (body) {
     );
   }
 
-  Future<Either<Failure, Unit>> dismissTraining(String messageId) async {
-    return callWithResilience<Unit>(
-      call: () => http.post(
-        Uri.parse(
-          '${_config.backendUrl}/api/v1/ingestion/training/$messageId/dismiss',
-        ),
-        headers: _getHeaders(),
-        body: jsonEncode({'create_rule': false}),
-      ),
-      onSuccess: (_) => unit,
-    );
-  }
 
-  Future<Either<Failure, Map<String, dynamic>>> aiForensicParse(
-    String content,
-  ) async {
-    return callWithResilience<Map<String, dynamic>>(
-      call: () => http.post(
-        Uri.parse('${_config.backendUrl}/api/v1/mobile/ai/forensic-parse'),
-        headers: _getHeaders(),
-        body: jsonEncode({'content': content}),
-      ),
-      onSuccess: (body) => jsonDecode(body as String) as Map<String, dynamic>,
-    );
-  }
-
-  Future<Either<Failure, List<dynamic>>> fetchSpamFilters() async {
-    return callWithResilience<List<dynamic>>(
-      call: () => http.get(
-        Uri.parse('${_config.backendUrl}/api/v1/ingestion/training/spam'),
-        headers: _getHeaders(),
-      ),
-      onSuccess: (body) => (jsonDecode(body as String) as Map<String, dynamic>)['data'] as List<dynamic>? ?? [],
-    );
-  }
-
-  Future<Either<Failure, Unit>> markAsSpam(String messageId) async {
-    return callWithResilience<Unit>(
-      call: () => http.post(
-        Uri.parse(
-          '${_config.backendUrl}/api/v1/ingestion/training/$messageId/mark-as-spam',
-        ),
-        headers: _getHeaders(),
-      ),
-      onSuccess: (_) => unit,
-    );
-  }
-
-  Future<Either<Failure, Unit>> bulkIgnore(List<String> ids) async {
-    return callWithResilience<Unit>(
-      call: () => http.post(
-        Uri.parse(
-          '${_config.backendUrl}/api/v1/ingestion/training/bulk-dismiss',
-        ),
-        headers: _getHeaders(),
-        body: jsonEncode({'ids': ids, 'create_rule': false}),
-      ),
-      onSuccess: (_) => unit,
-    );
-  }
-
-  Future<Either<Failure, Unit>> deleteSpamFilter(String filterId) async {
-    return callWithResilience<Unit>(
-      call: () => http.delete(
-        Uri.parse(
-          '${_config.backendUrl}/api/v1/ingestion/training/spam/$filterId',
-        ),
-        headers: _getHeaders(),
-      ),
-      onSuccess: (_) => unit,
-    );
-  }
 
   Future<Either<Failure, List<dynamic>>> fetchGeographicalHeatmap({
     int? month,
