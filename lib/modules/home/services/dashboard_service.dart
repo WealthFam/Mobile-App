@@ -182,6 +182,7 @@ class DashboardService extends ChangeNotifier with NetworkResilience {
       _fetchDashboardCategories(),
       _fetchDashboardInvestments(),
       _fetchCalendarHeatmap(),
+      _fetchCategoryBudgets(),
     ];
 
     try {
@@ -303,6 +304,26 @@ class DashboardService extends ChangeNotifier with NetworkResilience {
         );
       }
       _updateData((d) => d.copyWith(investmentSummary: investmentSummary));
+    });
+  }
+
+  Future<void> _fetchCategoryBudgets() async {
+    final result = await callWithResilience<List<dynamic>>(
+      call: () => http.get(
+        Uri.parse(
+          '${_config.backendUrl}/api/v1/mobile/budgets/progress',
+        ).replace(queryParameters: _getQueryParams()),
+        headers: _getHeaders(),
+      ),
+      onSuccess: (body) => jsonDecode(body as String) as List<dynamic>,
+    );
+
+    result.fold((failure) => _error = failure.message, (data) {
+      final budgets = data
+          .map((i) => CategoryBudgetProgress.fromJson(i as Map<String, dynamic>))
+          .toList();
+
+      _updateData((d) => d.copyWith(categoryBudgets: budgets));
     });
   }
 

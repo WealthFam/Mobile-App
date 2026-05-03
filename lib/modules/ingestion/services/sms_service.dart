@@ -534,7 +534,7 @@ class SmsService extends ChangeNotifier {
       }
     }
 
-    final url = Uri.parse('${_config.backendUrl}/api/v1/ingestion/sms');
+    final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/ingestion/sms');
     final hash = _computeHash(address, date.toString(), body);
 
     final payload = {

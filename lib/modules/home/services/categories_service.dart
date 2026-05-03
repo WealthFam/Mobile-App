@@ -111,7 +111,7 @@ class CategoriesService extends ChangeNotifier {
     String? parentId,
   }) async {
     try {
-      final url = Uri.parse('${_config.backendUrl}/api/v1/finance/categories');
+      final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/categories');
       final response = await http.post(
         url,
         headers: {
@@ -145,7 +145,7 @@ class CategoriesService extends ChangeNotifier {
   }) async {
     try {
       final url = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/categories/$id',
+        '${_config.backendUrl}/api/v1/mobile/categories/$id',
       );
       final response = await http.put(
         url,
@@ -174,7 +174,7 @@ class CategoriesService extends ChangeNotifier {
   Future<bool> deleteCategory(String id) async {
     try {
       final url = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/categories/$id',
+        '${_config.backendUrl}/api/v1/mobile/categories/$id',
       );
       final response = await http.delete(
         url,

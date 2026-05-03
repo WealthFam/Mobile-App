@@ -130,7 +130,7 @@ class FundsService extends ChangeNotifier {
     if (_auth.accessToken == null) return;
     try {
       final url = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/mutual-funds/sync/status',
+        '${_config.backendUrl}/api/v1/mobile/mutual-funds/sync/status',
       );
       final response = await http.get(
         url,
@@ -149,7 +149,7 @@ class FundsService extends ChangeNotifier {
     if (_auth.accessToken == null) return;
     try {
       final url = Uri.parse(
-        '${_config.backendUrl}/api/v1/finance/mutual-funds/sync/refresh',
+        '${_config.backendUrl}/api/v1/mobile/mutual-funds/sync/refresh',
       );
       final response = await http.post(
         url,
@@ -178,7 +178,7 @@ class FundsService extends ChangeNotifier {
     try {
       final url =
           Uri.parse(
-            '${_config.backendUrl}/api/v1/finance/mutual-funds/analytics/performance-timeline',
+            '${_config.backendUrl}/api/v1/mobile/mutual-funds/analytics/performance-timeline',
           ).replace(
             queryParameters: {
               'period': '1y',

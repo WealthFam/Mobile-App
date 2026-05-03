@@ -159,7 +159,7 @@ class AuthService extends ChangeNotifier {
   Future<void> logout() async {
     try {
       if (_accessToken != null) {
-        final url = Uri.parse('${_config.backendUrl}/api/v1/auth/logout');
+        final url = Uri.parse('${_config.backendUrl}/api/v1/mobile/logout');
         await http
             .post(
               url,

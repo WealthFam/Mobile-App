@@ -14,6 +14,7 @@ class DashboardData {
     required this.summary,
     required this.budget,
     required this.spendingTrend, required this.categoryDistribution, required this.monthWiseTrend, required this.recentTransactions, this.investmentSummary,
+    this.categoryBudgets = const [],
     this.calendarHeatmap = const {},
     this.pendingTriageCount = 0,
     this.familyMembersCount,
@@ -48,6 +49,10 @@ class DashboardData {
           (json['calendar_heatmap'] as Map<String, dynamic>? ?? {}).map(
             (k, v) => MapEntry(k, _toDecimal(v)),
           ),
+      categoryBudgets:
+          (json['category_budgets'] as List? ?? [])
+              .map((i) => CategoryBudgetProgress.fromJson(i as Map<String, dynamic>))
+              .toList(),
       pendingTriageCount: json['pending_triage_count'] as int? ?? 0,
       familyMembersCount: json['family_members_count'] as int?,
     );
@@ -59,6 +64,7 @@ class DashboardData {
   final List<CategoryPieItem> categoryDistribution;
   final List<MonthTrendItem> monthWiseTrend;
   final List<RecentTransaction> recentTransactions;
+  final List<CategoryBudgetProgress> categoryBudgets;
   final Map<String, Decimal> calendarHeatmap;
   final int pendingTriageCount;
   final int? familyMembersCount;
@@ -93,6 +99,7 @@ class DashboardData {
     Map<String, Decimal>? calendarHeatmap,
     int? pendingTriageCount,
     int? familyMembersCount,
+    List<CategoryBudgetProgress>? categoryBudgets,
   }) {
     return DashboardData(
       summary: summary ?? this.summary,
@@ -105,6 +112,7 @@ class DashboardData {
       calendarHeatmap: calendarHeatmap ?? this.calendarHeatmap,
       pendingTriageCount: pendingTriageCount ?? this.pendingTriageCount,
       familyMembersCount: familyMembersCount ?? this.familyMembersCount,
+      categoryBudgets: categoryBudgets ?? this.categoryBudgets,
     );
   }
 }
@@ -151,6 +159,50 @@ class CategoryPieItem {
   final Decimal value;
 
   Map<String, dynamic> toJson() => {'name': name, 'value': value.toString()};
+}
+
+class CategoryBudgetProgress {
+  CategoryBudgetProgress({
+    required this.category,
+    required this.spent,
+    required this.income,
+    this.id,
+    this.limit,
+    this.remaining,
+    this.percentage,
+    this.icon,
+    this.color,
+    this.parentId,
+    this.categoryId,
+  });
+
+  factory CategoryBudgetProgress.fromJson(Map<String, dynamic> json) {
+    return CategoryBudgetProgress(
+      id: json['id'] as String?,
+      category: json['category'] as String,
+      limit: _toDecimal(json['amount_limit']),
+      spent: _toDecimal(json['spent']),
+      income: _toDecimal(json['income']),
+      remaining: _toDecimal(json['remaining']),
+      percentage: (json['percentage'] as num?)?.toDouble(),
+      icon: json['icon'] as String?,
+      color: json['color'] as String?,
+      parentId: json['parent_id'] as String?,
+      categoryId: json['category_id'] as String?,
+    );
+  }
+
+  final String? id;
+  final String category;
+  final Decimal? limit;
+  final Decimal spent;
+  final Decimal income;
+  final Decimal? remaining;
+  final double? percentage;
+  final String? icon;
+  final String? color;
+  final String? parentId;
+  final String? categoryId;
 }
 
 class DashboardSummary {
