@@ -87,47 +87,6 @@ class _SmsManagementScreenState extends State<SmsManagementScreen> {
     }
   }
 
-  Future<void> _pushBulk() async {
-    if (_selectedHashes.isEmpty) return;
-
-    setState(() => _isProcessing = true);
-    if (!context.mounted) return;
-    final messenger = ScaffoldMessenger.of(context);
-    int success = 0;
-    int failed = 0;
-
-    final smsService = context.read<SmsService>();
-
-    for (final msg in _messages) {
-      final hash = smsService.computeHash(
-        msg.address ?? '',
-        (msg.date ?? 0).toString(),
-        msg.body ?? '',
-      );
-      if (_selectedHashes.contains(hash)) {
-        final smsService = context.read<SmsService>();
-        if (!context.mounted) return;
-        try {
-          await smsService.sendSmsToBackend(msg.address!, msg.body!, msg.date!);
-          success++;
-        } catch (e) {
-          failed++;
-        }
-      }
-    }
-
-    if (context.mounted) {
-      setState(() {
-        _isProcessing = false;
-        _selectedHashes.clear();
-      });
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Bulk push complete: $success success, $failed failed'),
-        ),
-      );
-    }
-  }
 
   Future<void> _pickAndSyncDate() async {
     final DateTime? picked = await showDatePicker(
@@ -265,8 +224,8 @@ class _SmsManagementScreenState extends State<SmsManagementScreen> {
         : _filteredMessages;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: const AppDrawer(),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: const DrawerMenuButton(),
         title: const Text('SMS Management'),
@@ -364,42 +323,6 @@ class _SmsManagementScreenState extends State<SmsManagementScreen> {
           ),
         ],
       ),
-      floatingActionButton: _selectedHashes.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: _isProcessing
-                  ? null
-                  : () async {
-                      bool? confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (c) => AlertDialog(
-                          title: const Text('Bulk Push'),
-                          content: Text(
-                            'Push ${_selectedHashes.length} selected messages to the server?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(c, false),
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(c, true),
-                              child: const Text('Proceed'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
-                        if (!context.mounted) return;
-                        _pushBulk();
-                      }
-                    },
-              icon: const Icon(Icons.cloud_upload),
-              label: Text('Push (${_selectedHashes.length})'),
-              backgroundColor: theme.primaryColor,
-              foregroundColor: theme.colorScheme.onPrimary,
-            )
-          : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.endContained,
       bottomNavigationBar: BottomAppBar(
         color: theme.colorScheme.surface,
         elevation: 8,

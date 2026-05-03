@@ -59,155 +59,9 @@ class _ExpenseGroupsScreenState extends State<ExpenseGroupsScreen> {
               )
             : _buildExpenseGroupsList(goalsService, goalsService.expenseGroups),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddGroupDialog(context),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
-  void _showAddGroupDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    final budgetController = TextEditingController();
-    final iconController = TextEditingController(text: '📁');
-
-    DateTime startDate = DateTime.now();
-    DateTime endDate = DateTime.now().add(const Duration(days: 30));
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('New Expense Group'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: iconController,
-                  decoration: const InputDecoration(
-                    labelText: 'Icon (Emoji)',
-                    hintText: 'e.g. 🎒, 🏠',
-                  ),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Group Name',
-                    hintText: 'e.g. Goa Trip 2024',
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: descriptionController,
-                  decoration: const InputDecoration(labelText: 'Description'),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: startDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2101),
-                          );
-                          if (picked != null) {
-                            setDialogState(() => startDate = picked);
-                          }
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Start Date',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(DateFormat('MMM d, yyyy').format(startDate)),
-                          ],
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: endDate,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2101),
-                          );
-                          if (picked != null) {
-                            setDialogState(() => endDate = picked);
-                          }
-                        },
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'End Date',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(DateFormat('MMM d, yyyy').format(endDate)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: budgetController,
-                  decoration: const InputDecoration(
-                    labelText: 'Budget (Optional)',
-                    prefixText: '₹ ',
-                  ),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                final service = context.read<GoalsService>();
-                final success = await service.createExpenseGroup({
-                  'name': nameController.text,
-                  'description': descriptionController.text,
-                  'icon': iconController.text,
-                  'budget': double.tryParse(budgetController.text) ?? 0.0,
-                  'start_date': startDate.toIso8601String(),
-                  'end_date': endDate.toIso8601String(),
-                  'is_active': true,
-                });
-                if (!context.mounted) return;
-                if (success) Navigator.pop(context);
-              },
-              child: const Text('Create'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildExpenseGroupsList(GoalsService service, List<dynamic> groups) {
     if (groups.isEmpty) {
@@ -272,7 +126,7 @@ class _ExpenseGroupsScreenState extends State<ExpenseGroupsScreen> {
               Navigator.push<void>(
                 context,
                 MaterialPageRoute<void>(
-                  builder: (_) => ExpenseGroupDetailsScreen(group: group),
+                  builder: (_) => AppShell(body: ExpenseGroupDetailsScreen(group: group)),
                 ),
               );
             },

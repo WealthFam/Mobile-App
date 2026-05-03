@@ -55,62 +55,9 @@ class _GoalsScreenState extends State<GoalsScreen> {
               )
             : _buildInvestmentGoalsList(goalsService, goalsService.goals),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddGoalDialog(context),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
-  void _showAddGoalDialog(BuildContext context) {
-    final nameController = TextEditingController();
-    final targetController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Investment Goal'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Goal Name'),
-            ),
-            TextField(
-              controller: targetController,
-              decoration: const InputDecoration(labelText: 'Target Amount'),
-              keyboardType: TextInputType.number,
-            ),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(labelText: 'Description'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final service = context.read<GoalsService>();
-              final success = await service.createGoal({
-                'name': nameController.text,
-                'target_amount': double.tryParse(targetController.text) ?? 0,
-                'description': descriptionController.text,
-              });
-              if (!context.mounted) return;
-              if (success) Navigator.pop(context);
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildInvestmentGoalsList(GoalsService service, List<dynamic> goals) {
     if (goals.isEmpty) {

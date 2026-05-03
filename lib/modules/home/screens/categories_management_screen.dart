@@ -249,11 +249,6 @@ class _CategoriesManagementScreenState
                       },
                     ),
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showCategoryForm(),
-        icon: const Icon(Icons.add),
-        label: const Text('New Category'),
-      ),
     );
   }
 }

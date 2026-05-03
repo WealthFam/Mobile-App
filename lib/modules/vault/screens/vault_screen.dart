@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_app/core/errors/either.dart';
@@ -65,8 +64,8 @@ class _VaultScreenState extends State<VaultScreen> {
     final filteredDocs = vaultService.documents;
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       drawer: const AppDrawer(),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         leading: vaultService.canGoBack || vaultService.isSelectionMode
             ? IconButton(
@@ -171,90 +170,10 @@ class _VaultScreenState extends State<VaultScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () => _showAddMenu(context),
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
-  void _showAddMenu(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.upload_file),
-              title: const Text('Upload File'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _pickAndUpload(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.create_new_folder),
-              title: const Text('New Folder'),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _showCreateFolderDialog(context);
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
 
-  Future<void> _showCreateFolderDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    final service = context.read<VaultService>();
-    final messenger = ScaffoldMessenger.of(context);
-
-    return showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Folder'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'Folder Name'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (controller.text.isNotEmpty) {
-                final result = await service.createFolder(controller.text);
-                result.fold(
-                  (failure) {
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(failure.message),
-                        backgroundColor: AppTheme.danger,
-                      ),
-                    );
-                  },
-                  (_) {
-                    if (mounted) Navigator.pop(context);
-                  },
-                );
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildBreadcrumbs(VaultService service) {
     if (service.breadcrumbs.length <= 1) return const SizedBox.shrink();
@@ -376,61 +295,6 @@ class _VaultScreenState extends State<VaultScreen> {
     );
   }
 
-  Future<void> _pickAndUpload(BuildContext context) async {
-    final messenger = ScaffoldMessenger.of(context);
-    final service = context.read<VaultService>();
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        
-      );
-
-      if (!mounted) return;
-
-      if (result != null && result.files.single.path != null) {
-        final file = result.files.single;
-
-        if (!mounted) return;
-        final metadata = await _showUploadMetadataDialog(
-          this.context,
-          file.name,
-        );
-        if (metadata == null) return;
-
-        final uploadResult = await service.uploadDocument(
-          filePath: file.path!,
-          fileName: metadata['name']!,
-          fileType: metadata['type']!,
-        );
-
-        if (!mounted) return;
-
-        uploadResult.fold(
-          (failure) {
-            messenger.showSnackBar(
-              SnackBar(
-                content: Text('Upload error: ${failure.message}'),
-                backgroundColor: AppTheme.danger,
-              ),
-            );
-          },
-          (_) {
-            messenger.showSnackBar(
-              SnackBar(content: Text('Uploaded ${file.name}')),
-            );
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text('Upload error: $e'),
-            backgroundColor: AppTheme.danger,
-          ),
-        );
-      }
-    }
-  }
 
   Widget _buildErrorState(String error) {
     return SingleChildScrollView(
@@ -1041,54 +905,6 @@ class _VaultScreenState extends State<VaultScreen> {
   }
 
 
-  Future<Map<String, String>?> _showUploadMetadataDialog(
-    BuildContext context,
-    String initialName,
-  ) async {
-    String type = 'OTHER';
-    final controller = TextEditingController(text: initialName);
-
-    return showDialog<Map<String, String>>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Upload Document'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'FileName'),
-              ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                initialValue: type,
-                decoration: const InputDecoration(labelText: 'Document Type'),
-                items: ['OTHER', 'BILL', 'INVOICE', 'POLICY', 'TAX', 'IDENTITY']
-                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                    .toList(),
-                onChanged: (val) => setDialogState(() => type = val!),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, {
-                'name': controller.text,
-                'type': type,
-              }),
-              child: const Text('Proceed'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   Future<void> _showRenameDialog(
     BuildContext context,

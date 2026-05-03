@@ -1,19 +1,20 @@
 import 'package:decimal/decimal.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:mobile_app/core/config/app_config.dart';
 import 'package:mobile_app/core/services/navigation_service.dart';
 import 'package:mobile_app/core/services/notification_service.dart';
 import 'package:mobile_app/core/services/socket_service.dart';
 import 'package:mobile_app/core/theme/app_theme.dart';
+import 'package:mobile_app/core/widgets/app_shell.dart';
 import 'package:mobile_app/core/widgets/transaction_settings_sheet.dart';
 import 'package:mobile_app/modules/auth/services/auth_service.dart';
 import 'package:mobile_app/modules/config/screens/sync_settings_screen.dart';
 import 'package:mobile_app/modules/home/models/dashboard_data.dart';
 import 'package:mobile_app/modules/home/models/transaction_category.dart';
 import 'package:mobile_app/modules/home/screens/activity_center_screen.dart';
-import 'package:mobile_app/modules/home/screens/add_transaction_screen.dart';
 import 'package:mobile_app/modules/home/screens/analytics_screen.dart';
 import 'package:mobile_app/modules/home/screens/calendar_heatmap_widget.dart';
 import 'package:mobile_app/modules/home/screens/mutual_funds_screen.dart';
@@ -24,8 +25,7 @@ import 'package:mobile_app/modules/ingestion/services/sms_service.dart';
 import 'package:provider/provider.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, this.onMenuPressed});
-  final VoidCallback? onMenuPressed;
+  const DashboardScreen({super.key});
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -60,19 +60,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       body: RefreshIndicator(
-        onRefresh: () => dashboard.refresh(),
+        onRefresh: () async {
+          HapticFeedback.mediumImpact();
+          await dashboard.refresh();
+        },
         child: CustomScrollView(
           slivers: [
             SliverAppBar(
               floating: true,
-              leading: widget.onMenuPressed != null
-                  ? IconButton(
-                      icon: const Icon(Icons.menu),
-                      onPressed: widget.onMenuPressed,
-                    )
-                  : null,
+              leading: const DrawerMenuButton(),
               title: GestureDetector(
                 onDoubleTap: () {
+                  HapticFeedback.heavyImpact();
                   dashboard.toggleMasking();
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -287,18 +286,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push<bool>(
-            context,
-            MaterialPageRoute<bool>(builder: (_) => const AddTransactionScreen()),
-          ).then((val) {
-            if (val == true) dashboard.refresh();
-          });
-        },
-        backgroundColor: AppTheme.primary,
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
@@ -1447,7 +1434,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onPressed: () {
                 Navigator.of(
                   context,
-                ).push(MaterialPageRoute<void>(builder: (_) => const SyncSettingsScreen()));
+                ).push(MaterialPageRoute<void>(builder: (_) => const AppShell(body: SyncSettingsScreen())));
               },
               icon: const Icon(Icons.settings),
               label: const Text('Update Server URL'),

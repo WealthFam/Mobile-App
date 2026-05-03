@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_app/core/services/navigation_service.dart';
 import 'package:mobile_app/core/widgets/app_shell.dart';
+import 'package:mobile_app/modules/home/screens/add_transaction_screen.dart';
 import 'package:mobile_app/modules/home/services/dashboard_service.dart';
 import 'package:mobile_app/modules/home/widgets/expenses_tab.dart';
 import 'package:mobile_app/modules/ingestion/screens/transaction_review_screen.dart';
@@ -26,6 +28,9 @@ class _TransactionsScreenState extends State<TransactionsScreen>
       vsync: this,
       initialIndex: (initialTab < 2) ? initialTab : 0,
     );
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   @override
@@ -51,6 +56,7 @@ class _TransactionsScreenState extends State<TransactionsScreen>
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
+      drawer: const AppDrawer(),
       appBar: AppBar(
         leading: const DrawerMenuButton(),
         title: const Text(
@@ -59,6 +65,11 @@ class _TransactionsScreenState extends State<TransactionsScreen>
         ),
         bottom: TabBar(
           controller: _tabController,
+          onTap: (index) {
+            if (_tabController.index != index) {
+              HapticFeedback.selectionClick();
+            }
+          },
           indicatorSize: TabBarIndicatorSize.label,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold),
           tabs: [
@@ -102,6 +113,23 @@ class _TransactionsScreenState extends State<TransactionsScreen>
           TransactionReviewScreen(isEmbedded: true),
         ],
       ),
+      floatingActionButton: _tabController.index == 0
+          ? FloatingActionButton(
+              onPressed: () async {
+                final val = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute<bool>(
+                    builder: (_) => const AppShell(body: AddTransactionScreen()),
+                  ),
+                );
+                if (val == true && context.mounted) {
+                  context.read<DashboardService>().refresh();
+                }
+              },
+              backgroundColor: theme.primaryColor,
+              child: const Icon(Icons.add, color: Colors.white),
+            )
+          : null,
     );
   }
 }
