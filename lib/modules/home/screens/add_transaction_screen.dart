@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:mobile_app/core/config/app_config.dart';
 import 'package:mobile_app/core/theme/app_theme.dart';
@@ -52,7 +53,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
     final auth = context.read<AuthService>();
     try {
       final response = await http.get(
-        Uri.parse('${config.backendUrl}/api/v1/finance/accounts'),
+        Uri.parse('${config.backendUrl}/api/v1/mobile/accounts'),
         headers: {'Authorization': 'Bearer ${auth.accessToken}'},
       );
       if (response.statusCode == 200) {
@@ -100,6 +101,7 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
       if (response.statusCode == 200) {
         if (mounted) {
+          HapticFeedback.mediumImpact();
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Transaction Added')));
