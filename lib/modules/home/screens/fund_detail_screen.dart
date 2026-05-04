@@ -127,7 +127,7 @@ class _FundDetailScreenState extends State<FundDetailScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             Text(
-              '${d.category} • ${d.schemeCode}',
+              '${d.category} • ${d.schemeCode}${d.lastUpdatedAt != null && d.lastUpdatedAt!.isNotEmpty ? ' • NAV: ${d.lastUpdatedAt}' : ''}',
               style: TextStyle(
                 color: theme.disabledColor,
                 fontSize: 10,

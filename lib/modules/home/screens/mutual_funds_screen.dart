@@ -98,6 +98,7 @@ class _MutualFundsScreenState extends State<MutualFundsScreen>
     String Function(Decimal) format,
   ) {
     final theme = Theme.of(context);
+    final fundsService = context.watch<FundsService>();
 
     return CustomScrollView(
       slivers: [
@@ -134,6 +135,16 @@ class _MutualFundsScreenState extends State<MutualFundsScreen>
                   ),
                 ],
               ),
+            IconButton(
+              icon: fundsService.isSyncing 
+                  ? const SizedBox(
+                      width: 18, 
+                      height: 18, 
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white70)
+                    )
+                  : const Icon(Icons.refresh),
+              onPressed: fundsService.isSyncing ? null : () => _confirmSync(context),
+            ),
             const SizedBox(width: 8),
           ],
         ),
@@ -201,69 +212,163 @@ class _MutualFundsScreenState extends State<MutualFundsScreen>
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Current Portfolio Value',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              if (p.xirr != null)
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'XIRR: ${p.xirr!.toStringAsFixed(2)}%',
-                    style: const TextStyle(
-                      color: Colors.white,
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Portfolio Value',
+                    style: TextStyle(
+                      color: Colors.white70,
                       fontSize: 12,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.1,
                     ),
                   ),
-                ),
+                  const SizedBox(height: 4),
+                  Text(
+                    format(p.totalCurrent),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              _buildSyncBadge(context),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            format(p.totalCurrent),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -1,
-            ),
-          ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 24),
           Row(
             children: [
-              _buildHeaderStat(
-                'Total Returns',
-                '${isProfit ? '+' : ''}${format(p.totalPl)}',
-                isProfit ? Colors.greenAccent : Colors.redAccent,
-              ),
-              const SizedBox(width: 24),
-              _buildHeaderStat(
-                'Day Change',
-                '${p.dayChange >= Decimal.zero ? '+' : ''}${format(p.dayChange)}',
-                p.dayChange >= Decimal.zero ? Colors.greenAccent : Colors.redAccent,
-              ),
-              const SizedBox(width: 24),
-              _buildHeaderStat(
-                'Invested',
-                format(p.totalInvested),
-                Colors.white,
+              _buildMiniStat('Invested', format(p.totalInvested)),
+              const SizedBox(width: 16),
+              _buildMiniStat(
+                'Returns', 
+                '${isProfit ? "+" : ""}${format(p.totalPl)} (${p.totalReturns.toStringAsFixed(2)}%)',
+                color: isProfit ? Colors.greenAccent : Colors.redAccent,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmSync(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Sync Mutual Funds'),
+        content: const Text(
+          'This will refresh your portfolio NAVs from the server. This may take a few moments in the background.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primary,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Start Sync'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      context.read<FundsService>().triggerSync();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Synchronization started in background...'),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Widget _buildSyncBadge(BuildContext context) {
+    final service = context.watch<FundsService>();
+    final lastUpdated = service.portfolio?.lastUpdatedAt;
+    
+    String timeText = 'Updating...';
+    if (!service.isSyncing) {
+      if (lastUpdated != null && lastUpdated.isNotEmpty) {
+        try {
+          // Attempt to parse ISO or common SQL formats
+          final dt = DateTime.parse(lastUpdated).toLocal();
+          timeText = DateFormat('dd MMM HH:mm').format(dt);
+        } catch (e) {
+          // If parsing fails, show the raw value or a snippet of it
+          timeText = lastUpdated.length > 10 ? lastUpdated.substring(0, 10) : lastUpdated;
+        }
+      } else {
+        timeText = 'Check Sync';
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black26,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (service.isSyncing)
+            const Padding(
+              padding: EdgeInsets.only(right: 6),
+              child: SizedBox(
+                width: 10,
+                height: 10,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+            )
+          else
+            const Icon(Icons.history, size: 12, color: Colors.white70),
+          const SizedBox(width: 4),
+          Text(
+            timeText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMiniStat(String label, String value, {Color color = Colors.white}) {
+    return Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 10),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ],
       ),
@@ -577,7 +682,7 @@ class _MutualFundsScreenState extends State<MutualFundsScreen>
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                h.schemeCode,
+                                '${h.schemeCode}${h.lastUpdated.isNotEmpty ? ' • NAV: ${h.lastUpdated}' : ''}',
                                 style: TextStyle(
                                   color: theme.disabledColor,
                                   fontSize: 10,

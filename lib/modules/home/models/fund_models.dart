@@ -114,6 +114,7 @@ class PortfolioSummary {
     required this.dayChangePercentage,
     required this.holdings,
     this.xirr,
+    this.lastUpdatedAt,
     this.assetAllocation,
     this.topGainers = const [],
     this.topLosers = const [],
@@ -128,6 +129,7 @@ class PortfolioSummary {
       dayChange: _toDecimal(json['day_change']),
       dayChangePercentage: _toDecimal(json['day_change_percentage']),
       xirr: json['xirr'] != null ? _toDouble(json['xirr']) : null,
+      lastUpdatedAt: json['last_updated_at'] as String?,
       assetAllocation: (json['asset_allocation'] as Map<String, dynamic>?)
           ?.map((k, v) => MapEntry(k, _toDouble(v))),
       topGainers: (json['top_gainers'] as List?)
@@ -150,11 +152,16 @@ class PortfolioSummary {
   final Decimal dayChange;
   final Decimal dayChangePercentage;
   final double? xirr;
+  final String? lastUpdatedAt;
   final Map<String, double>? assetAllocation;
   final List<FundHolding> topGainers;
   final List<FundHolding> topLosers;
   final List<String> textInsights;
   final List<FundHolding> holdings;
+
+  double get totalReturns => totalInvested != Decimal.zero
+      ? (totalPl.toDouble() / totalInvested.toDouble() * 100)
+      : 0.0;
 
   Map<String, dynamic> toJson() {
     return {
@@ -164,6 +171,7 @@ class PortfolioSummary {
       'day_change': dayChange.toString(),
       'day_change_percentage': dayChangePercentage.toString(),
       'xirr': xirr,
+      'last_updated_at': lastUpdatedAt,
       'holdings': holdings.map((h) => h.toJson()).toList(),
     };
   }
@@ -231,6 +239,7 @@ class FundDetailResponse {
     required this.events,
     this.fundHouse,
     this.xirr,
+    this.lastUpdatedAt,
   });
 
   factory FundDetailResponse.fromJson(Map<String, dynamic> json) {
@@ -247,6 +256,7 @@ class FundDetailResponse {
       dayChange: _toDecimal(json['day_change']),
       dayChangePercentage: _toDouble(json['day_change_percentage']),
       xirr: json['xirr'] != null ? _toDouble(json['xirr']) : null,
+      lastUpdatedAt: json['last_updated_at'] as String? ?? '',
       folios: (json['folios'] as List)
           .map((i) => Folio.fromJson(i as Map<String, dynamic>))
           .toList(),
@@ -271,6 +281,7 @@ class FundDetailResponse {
   final Decimal dayChange;
   final double dayChangePercentage;
   final double? xirr;
+  final String? lastUpdatedAt;
   final List<Folio> folios;
   final List<TimelinePoint> timeline;
   final List<InvestmentEvent> events;

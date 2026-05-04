@@ -281,6 +281,7 @@ class InvestmentSummary {
     required this.profitLoss,
     required this.dayChange, required this.dayChangePercent, this.xirr,
     this.sparkline = const [],
+    this.lastUpdatedAt,
   });
 
   factory InvestmentSummary.fromJson(Map<String, dynamic> json) {
@@ -294,6 +295,7 @@ class InvestmentSummary {
           .toList(),
       dayChange: _toDecimal(json['day_change']),
       dayChangePercent: _toDecimal(json['day_change_percent']),
+      lastUpdatedAt: json['last_updated_at'] as String?,
     );
   }
   final Decimal totalInvested;
@@ -303,6 +305,7 @@ class InvestmentSummary {
   final List<double> sparkline;
   final Decimal dayChange;
   final Decimal dayChangePercent;
+  final String? lastUpdatedAt;
 
   Map<String, dynamic> toJson() => {
     'total_invested': totalInvested.toString(),

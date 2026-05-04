@@ -573,13 +573,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Mutual Funds Overview',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Mutual Funds Overview',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        if (summary?.lastUpdatedAt != null)
+                          Text(
+                            'NAV: ${summary!.lastUpdatedAt}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 10,
+                            ),
+                          ),
+                      ],
                     ),
                     if (summary != null &&
                         summary.currentValue > Decimal.zero) ...[

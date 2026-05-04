@@ -36,6 +36,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   int _page = 1;
   final ScrollController _scrollController = ScrollController();
   DashboardService? _dashboard;
+  final Set<String> _expandedBudgetNodes = {};
 
   @override
   void initState() {
@@ -1135,28 +1136,29 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     // Group budgets by parentId to build hierarchy
     final Map<String?, List<CategoryBudgetProgress>> hierarchy = {};
     for (var b in budgets) {
-      // Prevent self-parenting and ensure we have a category ID
       if (b.categoryId == null || b.categoryId == b.parentId) continue;
       hierarchy.putIfAbsent(b.parentId, () => []).add(b);
     }
 
+    // Recursive check if a node or its descendants have a budget limit
+    bool hasBudgetInHierarchy(CategoryBudgetProgress n) {
+      if (n.limit != null && n.limit! > Decimal.zero) return true;
+      final sub = hierarchy[n.categoryId] ?? [];
+      return sub.any((s) => hasBudgetInHierarchy(s));
+    }
+
     // Roots are categories with null parentId
-    final roots = hierarchy[null] ?? [];
+    final roots = (hierarchy[null] ?? []).where(hasBudgetInHierarchy).toList();
     
-    // Sort roots: those with budgets first, then by spent amount
-    roots.sort((a, b) {
-      final aHasLimit = a.limit != null && a.limit! > Decimal.zero;
-      final bHasLimit = b.limit != null && b.limit! > Decimal.zero;
-      if (aHasLimit != bHasLimit) return aHasLimit ? -1 : 1;
-      return b.spent.compareTo(a.spent);
-    });
+    // Sort roots: highest spending first
+    roots.sort((a, b) => b.spent.compareTo(a.spent));
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSectionTitle(context, 'Budget vs Actual'),
         const SizedBox(height: 16),
-        ...roots.map((root) => _buildBudgetNode(context, root, hierarchy, 0, formatAmount)),
+        ...roots.map((root) => _buildBudgetNode(context, root, hierarchy, 0, formatAmount, hasBudgetInHierarchy)),
         const SizedBox(height: 32),
       ],
     );
@@ -1168,111 +1170,123 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     Map<String?, List<CategoryBudgetProgress>> hierarchy,
     int depth,
     String Function(Decimal) formatAmount,
+    bool Function(CategoryBudgetProgress) hasBudgetInHierarchy,
   ) {
-    if (depth > 10) return const SizedBox.shrink();
-    final children = node.categoryId != null ? (hierarchy[node.categoryId] ?? []) : <CategoryBudgetProgress>[];
+    final theme = Theme.of(context);
+    final children = (hierarchy[node.categoryId] ?? []).where(hasBudgetInHierarchy).toList();
+    final isExpanded = _expandedBudgetNodes.contains(node.categoryId);
     final hasLimit = node.limit != null && node.limit! > Decimal.zero;
     final isOver = hasLimit && node.spent > node.limit!;
     final progress = hasLimit 
         ? (node.spent.toDouble() / node.limit!.toDouble()).clamp(0.0, 1.0)
         : 0.0;
     
-    final theme = Theme.of(context);
     final color = isOver ? AppTheme.danger : (hasLimit ? AppTheme.primary : Colors.grey);
-
-    // Don't show if no budget and no spending and no children with budget/spending
-    bool shouldShow(CategoryBudgetProgress n, int d) {
-      if (d > 10) return false; // Safety depth limit
-      if ((n.limit != null && n.limit! > Decimal.zero) || n.spent > Decimal.zero) return true;
-      if (n.categoryId == null) return false;
-      final sub = hierarchy[n.categoryId] ?? [];
-      return sub.any((s) => shouldShow(s, d + 1));
-    }
-
-    if (!shouldShow(node, 0)) return const SizedBox.shrink();
 
     return Column(
       children: [
         Padding(
-          padding: EdgeInsets.only(left: depth * 12.0, bottom: 8, top: depth > 0 ? 0 : 8),
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.02),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(node.icon ?? '🏷️', style: const TextStyle(fontSize: 16)),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        node.category,
-                        style: TextStyle(
-                          fontSize: depth == 0 ? 14 : 13,
-                          fontWeight: depth == 0 ? FontWeight.bold : FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    if (hasLimit)
-                      Text(
-                        '${(node.percentage ?? 0).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: color,
-                        ),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      formatAmount(node.spent),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    if (hasLimit)
-                      Text(
-                        'of ${formatAmount(node.limit!)}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                      )
-                    else
-                      const Text(
-                        'No budget set',
-                        style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
-                      ),
-                  ],
-                ),
-                if (hasLimit) ...[
-                  const SizedBox(height: 8),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      backgroundColor: color.withValues(alpha: 0.1),
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                      minHeight: 6,
-                    ),
+          padding: EdgeInsets.only(left: depth * 16.0, bottom: 8),
+          child: InkWell(
+            onTap: children.isNotEmpty 
+                ? () {
+                    setState(() {
+                      if (isExpanded) {
+                        _expandedBudgetNodes.remove(node.categoryId);
+                      } else {
+                        _expandedBudgetNodes.add(node.categoryId!);
+                      }
+                    });
+                  }
+                : null,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
-              ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(node.icon ?? '🏷️', style: const TextStyle(fontSize: 16)),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          node.category,
+                          style: TextStyle(
+                            fontSize: depth == 0 ? 14 : 13,
+                            fontWeight: depth == 0 ? FontWeight.bold : FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (children.isNotEmpty)
+                        Icon(
+                          isExpanded ? Icons.expand_less : Icons.expand_more,
+                          size: 16,
+                          color: Colors.grey,
+                        ),
+                      const SizedBox(width: 8),
+                      if (hasLimit)
+                        Text(
+                          '${(node.percentage ?? 0).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formatAmount(node.spent),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      if (hasLimit)
+                        Text(
+                          'of ${formatAmount(node.limit!)}',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey),
+                        )
+                      else
+                        const Text(
+                          'Implicit Rollup',
+                          style: TextStyle(fontSize: 10, color: Colors.grey, fontStyle: FontStyle.italic),
+                        ),
+                    ],
+                  ),
+                  if (hasLimit) ...[
+                    const SizedBox(height: 8),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        backgroundColor: color.withValues(alpha: 0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(color),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
-        ...children.map((child) => _buildBudgetNode(context, child, hierarchy, depth + 1, formatAmount)),
+        if (isExpanded)
+          ...children.map((child) => _buildBudgetNode(context, child, hierarchy, depth + 1, formatAmount, hasBudgetInHierarchy)),
       ],
     );
   }

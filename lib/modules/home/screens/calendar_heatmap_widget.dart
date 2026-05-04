@@ -30,12 +30,20 @@ class CalendarHeatmapWidget extends StatelessWidget {
     final gridStartDate =
         startDate ?? gridEndDate.subtract(const Duration(days: 364));
 
-    // Find max value for intensity scaling
-    double maxVal = 0.01; // Avoid division by zero
-    data.forEach((_, val) {
-      final v = val.toDouble();
-      if (v > maxVal) maxVal = v;
-    });
+    // Find max value for intensity scaling using 90th percentile to avoid outliers
+    double maxVal = 1.0; 
+    final nonZeroValues = data.values
+        .map((v) => v.toDouble())
+        .where((v) => v > 0)
+        .toList()
+      ..sort();
+
+    if (nonZeroValues.isNotEmpty) {
+      // Use 90th percentile as the 'max' for color scaling
+      final index = (nonZeroValues.length * 0.9).floor();
+      maxVal = nonZeroValues[index < nonZeroValues.length ? index : nonZeroValues.length - 1];
+      if (maxVal < 0.01) maxVal = 0.01; // Safety
+    }
 
     // Group dates by week
     final weeks = _generateWeeks(gridStartDate, gridEndDate);

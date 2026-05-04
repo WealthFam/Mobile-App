@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -145,6 +146,34 @@ class FundsService extends ChangeNotifier {
     }
   }
 
+  bool _isSyncing = false;
+  bool get isSyncing => _isSyncing;
+
+  Timer? _syncTimer;
+
+  void _startSyncPolling() {
+    _syncTimer?.cancel();
+    _isSyncing = true;
+    notifyListeners();
+    
+    _syncTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
+      await fetchSyncStatus();
+      if (_syncStatus?['status'] != 'running') {
+        _stopSyncPolling();
+        if (_syncStatus?['status'] == 'completed') {
+          await fetchFunds();
+        }
+      }
+    });
+  }
+
+  void _stopSyncPolling() {
+    _syncTimer?.cancel();
+    _syncTimer = null;
+    _isSyncing = false;
+    notifyListeners();
+  }
+
   Future<void> triggerSync() async {
     if (_auth.accessToken == null) return;
     try {
@@ -156,11 +185,17 @@ class FundsService extends ChangeNotifier {
         headers: {'Authorization': 'Bearer ${_auth.accessToken}'},
       );
       if (response.statusCode == 200) {
-        await fetchSyncStatus();
+        _startSyncPolling();
       }
     } catch (e) {
       debugPrint('Trigger Sync Error: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _syncTimer?.cancel();
+    super.dispose();
   }
 
   // --- Performance Chart Data ---

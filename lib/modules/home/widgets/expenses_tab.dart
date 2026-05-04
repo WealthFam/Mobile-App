@@ -145,8 +145,7 @@ class _ExpensesTabState extends State<ExpensesTab> {
 
     return Column(
       children: [
-        _buildSearchBar(),
-        _buildFilterBar(dashboard, categories),
+        _buildSearchBar(dashboard, categories),
         Expanded(
           child: RefreshIndicator(
             onRefresh: () async {
@@ -191,148 +190,72 @@ class _ExpensesTabState extends State<ExpensesTab> {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(DashboardService dashboard, List<dynamic> categories) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      child: TextField(
-        onChanged: (val) {
-          setState(() => _searchQuery = val);
-          // Debounce could be added, but for now just fetch on change
-          _fetchTransactions(reset: true);
-        },
-        decoration: InputDecoration(
-          hintText: 'Search transactions...',
-          prefixIcon: const Icon(Icons.search, size: 20),
-          filled: true,
-          fillColor: Theme.of(context).cardColor.withValues(alpha: 0.5),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide.none,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilterBar(DashboardService dashboard, List<dynamic> categories) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            _FilterChip(
-              label: dashboard.selectedMemberId != null
-                  ? (dashboard.members.firstWhere(
-                      (m) => (m as Map<String, dynamic>)['id'] == dashboard.selectedMemberId,
-                      orElse: () => {'name': 'Member'}) as Map<String, dynamic>)['name'] as String
-                  : 'Family',
-              icon: Icons.people_outline,
-              onTap: () => _showMemberPicker(dashboard),
-              isActive: dashboard.selectedMemberId != null,
-            ),
-            const SizedBox(width: 8),
-            _FilterChip(
-              label: _selectedCategoryId ?? 'Category',
-              icon: Icons.category_outlined,
-              onTap: () => _showCategoryPicker(categories),
-              isActive: _selectedCategoryId != null,
-            ),
-            const SizedBox(width: 8),
-            _FilterChip(
-              label: _selectedAccountId != null
-                  ? ((_accounts.firstWhere(
-                      (a) => (a as Map<String, dynamic>)['id'] == _selectedAccountId,
-                      orElse: () => {'name': 'Account'}) as Map<String, dynamic>)['name'] as String)
-                  : 'Account',
-              icon: Icons.account_balance_outlined,
-              onTap: _showAccountPicker(),
-              isActive: _selectedAccountId != null,
-            ),
-            if (dashboard.selectedMemberId != null ||
-                _selectedCategoryId != null ||
-                _selectedAccountId != null) ...[
-              const SizedBox(width: 12),
-              VerticalDivider(
-                width: 1,
-                indent: 8,
-                endIndent: 8,
-                color: Theme.of(context).dividerColor,
-              ),
-              const SizedBox(width: 12),
-              TextButton.icon(
-                onPressed: () {
-                  dashboard.setMember(null);
-                  setState(() {
-                    _selectedCategoryId = null;
-                    _selectedAccountId = null;
-                  });
-                  _fetchTransactions(reset: true);
-                },
-                icon: const Icon(Icons.refresh, size: 16),
-                label: const Text('Reset', style: TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppTheme.danger,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showMemberPicker(DashboardService dashboard) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => ListView(
-        shrinkWrap: true,
+      child: Row(
         children: [
-          ListTile(
-            title: const Text('Full Family'),
-            selected: dashboard.selectedMemberId == null,
-            onTap: () {
-              dashboard.setMember(null);
-              Navigator.pop(context);
-              _fetchTransactions(reset: true);
-            },
-          ),
-          const Divider(height: 1),
-          ...dashboard.members.map((m) {
-            final member = m as Map<String, dynamic>;
-            final isSelected = dashboard.selectedMemberId == member['id'];
-            return ListTile(
-                title: Text(
-                  member['name'] as String,
-                  style: TextStyle(
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  ),
-                ),
-                selected: isSelected,
-                trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primary) : null,
-                onTap: () {
-                  dashboard.setMember(member['id'] as String?);
-                  Navigator.pop(context);
+          Expanded(
+            child: Container(
+              height: 44,
+              decoration: BoxDecoration(
+                color: theme.cardColor.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: TextField(
+                onChanged: (val) {
+                  setState(() => _searchQuery = val);
                   _fetchTransactions(reset: true);
                 },
-              );
-          }),
+                decoration: InputDecoration(
+                  hintText: 'Search transactions...',
+                  hintStyle: TextStyle(fontSize: 13, color: theme.disabledColor),
+                  prefixIcon: Icon(Icons.search, size: 18, color: theme.disabledColor),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _FilterIconButton(
+            icon: Icons.category_outlined,
+            isActive: _selectedCategoryId != null,
+            onTap: () => _showCategoryPicker(categories),
+          ),
+          const SizedBox(width: 4),
+          _FilterIconButton(
+            icon: Icons.account_balance_outlined,
+            isActive: _selectedAccountId != null,
+            onTap: _showAccountPicker(),
+          ),
+          if (_selectedCategoryId != null || _selectedAccountId != null) ...[
+            const SizedBox(width: 4),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _selectedCategoryId = null;
+                  _selectedAccountId = null;
+                });
+                _fetchTransactions(reset: true);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.filter_list_off, size: 20, color: AppTheme.danger),
+              ),
+            ),
+          ],
         ],
       ),
     );
   }
+
+
 
   void _showCategoryPicker(List<dynamic> categories) {
     showModalBottomSheet<void>(
@@ -518,15 +441,13 @@ class _ExpensesTabState extends State<ExpensesTab> {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
+class _FilterIconButton extends StatelessWidget {
+  const _FilterIconButton({
     required this.icon,
     required this.onTap,
     this.isActive = false,
   });
 
-  final String label;
   final IconData icon;
   final VoidCallback onTap;
   final bool isActive;
@@ -534,33 +455,36 @@ class _FilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isActive ? AppTheme.primary.withValues(alpha: 0.1) : theme.cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? AppTheme.primary : theme.dividerColor.withValues(alpha: 0.1),
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: isActive ? AppTheme.primary.withValues(alpha: 0.1) : theme.cardColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isActive ? AppTheme.primary : Colors.transparent,
+          width: 1.5,
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+      ),
+      child: IconButton(
+        icon: Stack(
           children: [
-            Icon(icon, size: 14, color: isActive ? AppTheme.primary : Colors.grey),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? AppTheme.primary : theme.textTheme.bodyMedium?.color,
+            Icon(icon, size: 20, color: isActive ? AppTheme.primary : Colors.grey),
+            if (isActive)
+              Positioned(
+                right: 0,
+                top: 0,
+                child: Container(
+                  width: 6,
+                  height: 6,
+                  decoration: const BoxDecoration(
+                    color: AppTheme.primary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
               ),
-            ),
           ],
         ),
+        onPressed: onTap,
+        visualDensity: VisualDensity.compact,
       ),
     );
   }
